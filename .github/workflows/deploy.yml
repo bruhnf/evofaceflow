@@ -1,0 +1,82 @@
+name: Deploy to AWS Lightsail
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Build TypeScript
+        working-directory: ./backend
+        run: npm run build
+
+      - name: Check for TypeScript errors
+        working-directory: ./backend
+        run: npx tsc --noEmit
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Deploy to Lightsail via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ubuntu
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          script: |
+            cd /opt/evofaceflow
+            
+            # Pull latest code
+            git fetch origin main
+            git reset --hard origin/main
+            
+            # Stop existing containers gracefully
+            docker-compose -f docker-compose.prod.yml stop backend
+            
+            # Rebuild and restart
+            docker-compose -f docker-compose.prod.yml up -d --build backend
+            
+            # Wait for health check
+            echo "Waiting for backend to be healthy..."
+            sleep 10
+            
+            # Verify deployment
+            if curl -sf http://localhost:5000/health > /dev/null; then
+              echo "✅ Deployment successful!"
+            else
+              echo "❌ Health check failed, rolling back..."
+              docker-compose -f docker-compose.prod.yml logs --tail=50 backend
+              exit 1
+            fi
+            
+            # Clean up old images
+            docker image prune -f
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment failed! Check the logs above."

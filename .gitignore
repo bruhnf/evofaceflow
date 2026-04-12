@@ -1,0 +1,113 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+.next/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# IDE/Editor
+.idea/
+*.swp
+*.swo
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# OS files
+.DS_Store
+Thumbs.db
+*.DS_Store
+ehthumbs.db
+Desktop.ini
+
+# MongoDB local data
+data/db/
+mongodb-data/
+
+# Test coverage
+coverage/
+.nyc_output/
+*.lcov
+.jest/
+
+# React Native / Expo
+.expo/
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+expo-env.d.ts
+.kotlin/
+
+# Generated native folders (Expo prebuild)
+ios/
+android/
+
+# Metro bundler
+.metro-health-check*
+
+# Misc
+*.pem
+.cache/
+
+# Docker
+docker-data/
+
+# Temporary files
+*.tmp
+*.temp
+.turbo/
+
+# Uploads and media (local dev)
+uploads/
+temp/
+
+# AWS
+.aws/
+
+# Secrets
+*.secret
+secrets/
+
+# Process files
+*.pid
+*.seed
+
+# Optional npm cache
+.npm/
+
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.prettierignore
+
+# Debug
+.node_repl_history
