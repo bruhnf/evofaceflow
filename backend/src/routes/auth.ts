@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { User } from '../models/User';
 import bcrypt from 'bcryptjs';
@@ -28,7 +28,7 @@ const loginValidation = [
 ];
 
 // Signup
-router.post('/signup', signupValidation, async (req, res) => {
+router.post('/signup', signupValidation, async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -66,7 +66,7 @@ router.post('/signup', signupValidation, async (req, res) => {
 });
 
 // Login
-router.post('/login', loginValidation, async (req, res) => {
+router.post('/login', loginValidation, async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
