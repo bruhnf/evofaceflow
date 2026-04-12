@@ -17,6 +17,6 @@ const API_URLS = {
 // - 'local' for local development
 // - 'ngrok' for testing on physical iOS/Android devices
 // - 'production' for deployed backend
-const CURRENT_ENV: keyof typeof API_URLS = 'ngrok';
+const CURRENT_ENV: keyof typeof API_URLS = 'production';
 
 export const API_BASE_URL = API_URLS[CURRENT_ENV];
