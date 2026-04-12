@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: evoface-mongo
+    restart: always
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    networks:
+      - evoface-network
+    # No external ports - only accessible within Docker network
+
+  redis:
+    image: redis:7-alpine
+    container_name: evoface-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - evoface-network
+    # No external ports - only accessible within Docker network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: evoface-backend
+    restart: always
+    expose:
+      - "5000"
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://root:${MONGO_ROOT_PASSWORD}@mongo:27017/evofaceflow?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - S3_BUCKET=${S3_BUCKET}
+      - KLING_ACCESS_KEY=${KLING_ACCESS_KEY}
+      - KLING_SECRET_KEY=${KLING_SECRET_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_API_KEY=${ADMIN_API_KEY}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - evoface-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: evoface-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - backend
+    networks:
+      - evoface-network
+
+volumes:
+  mongo-data:
+  redis-data:
+
+networks:
+  evoface-network:
+    driver: bridge
