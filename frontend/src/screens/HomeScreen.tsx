@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, Image, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, Image, TouchableOpacity, Dimensions, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +16,7 @@ interface FeedItem {
   createdAt: string;
 }
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
 const IMAGE_SIZE = (width - 48) / COLUMN_COUNT; // 48 = padding (16*2) + gap (16)
 
@@ -24,6 +24,7 @@ const HomeScreen = () => {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<FeedItem | null>(null);
 
   const fetchFeed = useCallback(async () => {
     try {
@@ -64,11 +65,13 @@ const HomeScreen = () => {
 
   const renderItem = ({ item }: { item: FeedItem }) => (
     <View style={styles.feedItem}>
-      <Image 
-        source={{ uri: item.imageUrl }} 
-        style={styles.feedImage}
-        resizeMode="cover"
-      />
+      <TouchableOpacity onPress={() => setSelectedImage(item)} activeOpacity={0.9}>
+        <Image 
+          source={{ uri: item.imageUrl }} 
+          style={styles.feedImage}
+          resizeMode="cover"
+        />
+      </TouchableOpacity>
       <View style={styles.userInfo}>
         {item.avatarUrl ? (
           <Image source={{ uri: item.avatarUrl }} style={styles.profilePhoto} />
@@ -131,6 +134,36 @@ const HomeScreen = () => {
           />
         }
       />
+
+      {/* Full Screen Image Modal */}
+      <Modal
+        visible={selectedImage !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSelectedImage(null)}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={() => setSelectedImage(null)}
+          >
+            <Ionicons name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+          
+          {selectedImage && (
+            <>
+              <Image 
+                source={{ uri: selectedImage.imageUrl }} 
+                style={styles.fullScreenImage}
+                resizeMode="contain"
+              />
+              <View style={styles.modalUserInfo}>
+                <Text style={styles.modalUsername}>@{selectedImage.username}</Text>
+              </View>
+            </>
+          )}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -226,6 +259,38 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
     marginTop: 8,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: width,
+    height: height * 0.8,
+  },
+  modalUserInfo: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+  },
+  modalUsername: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
