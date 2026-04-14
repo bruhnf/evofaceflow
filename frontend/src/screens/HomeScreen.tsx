@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, Image, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -48,6 +49,13 @@ const HomeScreen = () => {
   useEffect(() => {
     fetchFeed();
   }, [fetchFeed]);
+
+  // Refresh feed when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchFeed();
+    }, [fetchFeed])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
