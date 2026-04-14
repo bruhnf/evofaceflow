@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useUserStore } from '../store/useUserStore';
 import { API_BASE_URL } from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -37,7 +37,8 @@ const ProfileScreen = () => {
     followingCount, 
     followersCount, 
     likesCount, 
-    logout 
+    logout,
+    refreshProfile 
   } = useUserStore();
 
   const [videos, setVideos] = useState<VideoItem[]>([]);
@@ -93,9 +94,16 @@ const ProfileScreen = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchVideos();
+    await Promise.all([fetchVideos(), refreshProfile()]);
     setRefreshing(false);
   }, [userId]);
+
+  // Refresh profile data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshProfile();
+    }, [])
+  );
 
   useEffect(() => {
     if (userId) fetchVideos();
@@ -103,7 +111,7 @@ const ProfileScreen = () => {
 
   const displayName = username || 'New User Name';
   const displayHandle = username ? `@${username}` : '@user03978539';
-  const displayBio = bio || 'Full stack dev, computer science, node, js, python, react, rust, ruby, Go - Agent of Fortune';
+  const displayBio = bio || 'Add your bio here. Tell people about yourself and what you love!';
 
   return (
     <SafeAreaView style={styles.container}>

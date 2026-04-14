@@ -13,9 +13,10 @@ interface UserState {
   followersCount: number;
   likesCount: number;
 
-  setUser: (user: Partial<Omit<UserState, 'setUser' | 'logout' | 'loadUserFromStorage'>>) => void;
+  setUser: (user: Partial<Omit<UserState, 'setUser' | 'logout' | 'loadUserFromStorage' | 'refreshProfile'>>) => void;
   logout: () => Promise<void>;
   loadUserFromStorage: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
@@ -75,6 +76,30 @@ export const useUserStore = create<UserState>((set, get) => ({
       }
     } catch (error) {
       console.error('Failed to load user from storage', error);
+    }
+  },
+
+  refreshProfile: async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) return;
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      
+      if (response.ok) {
+        const user = await response.json();
+        set({
+          followingCount: user.followingCount,
+          followersCount: user.followersCount,
+          likesCount: user.likesCount,
+          bio: user.bio || '',
+          avatarUrl: user.avatarUrl || '',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to refresh profile', error);
     }
   },
 }));
