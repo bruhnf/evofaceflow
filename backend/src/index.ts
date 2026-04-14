@@ -4,11 +4,13 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
 import authRoutes from './routes/auth';
 import uploadRoutes from './routes/upload';
 import videoRoutes from './routes/video';
 import adminRoutes from './routes/admin';
 import friendsRoutes from './routes/friends';
+import feedRoutes from './routes/feed';
 
 dotenv.config();
 
@@ -65,6 +67,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/friends', friendsRoutes);
+app.use('/api/feed', feedRoutes);
 
 
 mongoose.connect(process.env.MONGO_URI!)
@@ -76,6 +79,11 @@ app.use('/api/auth', authRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'EvoFaceFlow backend is running!' });
+});
+
+// Serve admin dashboard
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/admin.html'));
 });
 
 // app.listen(PORT, () => {

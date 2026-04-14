@@ -3,9 +3,8 @@ import multer from 'multer';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client } from '../config/s3';
 import { v4 as uuidv4 } from 'uuid';
-import { Video } from '../models/Video';
+import { Image } from '../models/Image';
 import { authenticateToken } from '../middleware/auth';
-import videoQueue from '../queue/videoQueue';
 
 const router = Router();
 
@@ -30,10 +29,11 @@ router.post('/images', authenticateToken, upload.array('images', 9), async (req,
       return res.status(400).json({ message: 'At least 3 images required' });
     }
 
-    const uploadedUrls: string[] = [];
+    const uploadedImages: any[] = [];
 
     for (const file of files) {
-      const key = `uploads/${userId}/${Date.now()}-${uuidv4()}-${file.originalname}`;
+      const imageId = 'img_' + uuidv4();
+      const key = `images/${userId}/${imageId}.jpg`;
 
       const command = new PutObjectCommand({
         Bucket: process.env.S3_BUCKET!,
@@ -44,36 +44,27 @@ router.post('/images', authenticateToken, upload.array('images', 9), async (req,
 
       await s3Client.send(command);
 
-      const url = `https://${process.env.S3_BUCKET}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
-      uploadedUrls.push(url);
+      const imageUrl = `https://${process.env.S3_BUCKET}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
+
+      // Save to Image model
+      const newImage = new Image({
+        imageId,
+        userId,
+        imageUrl,
+        isPublic: true, // Images are public for the feed
+      });
+
+      await newImage.save();
+      uploadedImages.push({
+        imageId,
+        imageUrl,
+      });
     }
-
-    const durationSeconds = uploadedUrls.length === 3 ? 15 : uploadedUrls.length <= 6 ? 30 : 60;
-
-    // Create Video record
-    const newVideo = new Video({
-      videoId: 'vid_' + uuidv4(),
-      userId,
-      imageUrls: uploadedUrls,
-      status: 'processing',
-      durationSeconds,
-    });
-
-    await newVideo.save();
-
-    // Queue the AI generation job
-    await videoQueue.add('generate-video', {
-      videoId: newVideo.videoId,
-      imageUrls: uploadedUrls,
-      userId,
-      durationSeconds,
-    });
 
     res.json({ 
       success: true,
-      message: 'Images uploaded successfully. Video generation started in background.',
-      videoId: newVideo.videoId,
-      durationSeconds
+      message: `${uploadedImages.length} images uploaded successfully!`,
+      images: uploadedImages,
     });
   } catch (error: any) {
     console.error('Upload Error:', error);

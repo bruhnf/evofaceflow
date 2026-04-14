@@ -17,21 +17,42 @@ const UploadScreen = () => {
   const [imageSlots, setImageSlots] = useState<(string | null)[]>(Array(maxImages).fill(null));
   const [isUploading, setIsUploading] = useState(false);
 
-  // Resize image to target resolution for morph effect (576x1024 portrait or 1024x576 landscape)
+  // Resize image to max 1024px on longest side while keeping aspect ratio
   const resizeImage = async (uri: string): Promise<string> => {
-    // Get image dimensions to determine orientation
+    // Get image dimensions
     const { width, height } = await new Promise<{ width: number; height: number }>((resolve) => {
       Image.getSize(uri, (w, h) => resolve({ width: w, height: h }));
     });
 
-    const isPortrait = height > width;
-    const targetWidth = isPortrait ? 576 : 1024;
-    const targetHeight = isPortrait ? 1024 : 576;
+    const maxDimension = 1024;
+    
+    // Only resize if needed
+    if (width <= maxDimension && height <= maxDimension) {
+      // Still compress for smaller file size
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [],
+        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      return result.uri;
+    }
+
+    // Calculate new dimensions keeping aspect ratio
+    let newWidth: number;
+    let newHeight: number;
+    
+    if (width > height) {
+      newWidth = maxDimension;
+      newHeight = Math.round((height / width) * maxDimension);
+    } else {
+      newHeight = maxDimension;
+      newWidth = Math.round((width / height) * maxDimension);
+    }
 
     const result = await ImageManipulator.manipulateAsync(
       uri,
-      [{ resize: { width: targetWidth, height: targetHeight } }],
-      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      [{ resize: { width: newWidth, height: newHeight } }],
+      { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
     );
 
     return result.uri;
@@ -56,7 +77,7 @@ const uploadToS3 = async () => {
   const filledUris = imageSlots.filter((uri): uri is string => uri !== null);
   
   if (filledUris.length < 3) {
-    Alert.alert('Not enough photos', 'You need at least 3 photos to create a video.');
+    Alert.alert('Not enough photos', 'You need at least 3 photos to upload.');
     return;
   }
 
@@ -78,7 +99,7 @@ const uploadToS3 = async () => {
       body: formData,
       headers: {
         'Accept': 'application/json',
-        'Authorization': `Bearer ${token}`,   // ← JWT protection
+        'Authorization': `Bearer ${token}`,
       },
     });
 
@@ -87,8 +108,10 @@ const uploadToS3 = async () => {
     if (result.success) {
       Alert.alert(
         'Upload Successful!', 
-        `Video job created!\n\nVideo ID: ${result.videoId}\nExpected duration: ${result.durationSeconds}s`
+        result.message
       );
+      // Clear the image slots after successful upload
+      setImageSlots(Array(maxImages).fill(null));
     } else {
       Alert.alert('Upload Failed', result.message);
     }
@@ -102,11 +125,11 @@ const uploadToS3 = async () => {
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Create Your Life Journey Video</Text>
+        <Text style={styles.title}>Upload Your Photos</Text>
         
         <Text style={styles.subtitle}>
-          Tap each box to add one photo.{'\n'}
-          Order matters — photos are processed left-to-right for seamless morphs.
+          Tap each box to add a photo.{'\n'}
+          Share your moments with your followers!
         </Text>
 
         <Text style={styles.subscriptionInfo}>
@@ -147,7 +170,7 @@ const uploadToS3 = async () => {
               <ActivityIndicator color="white" />
             ) : (
               <Text style={styles.createButtonText}>
-                Upload to S3 & Generate Video
+                Upload Photos
               </Text>
             )}
           </TouchableOpacity>

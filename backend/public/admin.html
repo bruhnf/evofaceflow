@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EvoFaceFlow Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { color: #00d4ff; margin-bottom: 20px; }
+    h2 { color: #00d4ff; margin: 20px 0 10px; font-size: 1.2rem; }
+    
+    .auth-form {
+      background: #16213e;
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 400px;
+      margin: 100px auto;
+    }
+    .auth-form input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: none;
+      border-radius: 5px;
+      background: #1a1a2e;
+      color: #fff;
+    }
+    .auth-form button {
+      width: 100%;
+      padding: 12px;
+      background: #00d4ff;
+      border: none;
+      border-radius: 5px;
+      color: #1a1a2e;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .auth-form button:hover { background: #00bbdd; }
+    
+    .dashboard { display: none; }
+    .dashboard.active { display: block; }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: #16213e;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #00d4ff;
+    }
+    .stat-card .label {
+      color: #888;
+      font-size: 0.85rem;
+      margin-top: 5px;
+    }
+    
+    .section {
+      background: #16213e;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #2a2a4e;
+    }
+    th { color: #00d4ff; }
+    
+    .btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin-right: 5px;
+    }
+    .btn-primary { background: #00d4ff; color: #1a1a2e; }
+    .btn-danger { background: #ff4757; color: #fff; }
+    .btn-success { background: #2ed573; color: #1a1a2e; }
+    .btn:hover { opacity: 0.8; }
+    
+    .form-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .form-group input, .form-group select {
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      background: #1a1a2e;
+      color: #fff;
+    }
+    .form-group input { flex: 1; min-width: 150px; }
+    
+    .error { color: #ff4757; margin-top: 10px; }
+    .success { color: #2ed573; margin-top: 10px; }
+    
+    .nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .nav button {
+      padding: 10px 20px;
+      background: #16213e;
+      border: 2px solid #16213e;
+      color: #fff;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .nav button.active {
+      border-color: #00d4ff;
+      color: #00d4ff;
+    }
+    
+    .logout-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid #ff4757;
+      color: #ff4757;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+    .image-card {
+      background: #1a1a2e;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .image-card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+    .image-card .info {
+      padding: 10px;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Login Form -->
+    <div class="auth-form" id="authForm">
+      <h1 style="text-align: center; margin-bottom: 20px;">🎬 EvoFaceFlow Admin</h1>
+      <input type="password" id="apiKey" placeholder="Admin API Key">
+      <button onclick="login()">Login</button>
+      <div class="error" id="authError"></div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="dashboard" id="dashboard">
+      <button class="logout-btn" onclick="logout()">Logout</button>
+      <h1>🎬 EvoFaceFlow Admin Dashboard</h1>
+      
+      <div class="nav">
+        <button class="active" onclick="showTab('stats')">Dashboard</button>
+        <button onclick="showTab('users')">Users</button>
+        <button onclick="showTab('images')">Images</button>
+      </div>
+
+      <!-- Stats Tab -->
+      <div id="stats-tab">
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="value" id="totalUsers">-</div>
+            <div class="label">Total Users</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="totalImages">-</div>
+            <div class="label">Total Images</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="totalVideos">-</div>
+            <div class="label">Total Videos</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="usersWithImages">-</div>
+            <div class="label">Users w/ Images</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="newUsersToday">-</div>
+            <div class="label">New Today</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="newImagesThisWeek">-</div>
+            <div class="label">Images This Week</div>
+          </div>
+        </div>
+        
+        <div class="section">
+          <h2>Subscription Breakdown</h2>
+          <table>
+            <tr><th>Level</th><th>Count</th></tr>
+            <tr><td>Beginner (3 images)</td><td id="beginnerCount">-</td></tr>
+            <tr><td>Intermediate (6 images)</td><td id="intermediateCount">-</td></tr>
+            <tr><td>Advanced (9 images)</td><td id="advancedCount">-</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- Users Tab -->
+      <div id="users-tab" style="display: none;">
+        <div class="section">
+          <h2>Create Test User</h2>
+          <div class="form-group">
+            <input type="text" id="newUsername" placeholder="Username">
+            <input type="email" id="newEmail" placeholder="Email">
+            <input type="password" id="newPassword" placeholder="Password">
+            <select id="newSubscription">
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+            <button class="btn btn-success" onclick="createUser()">Create User</button>
+          </div>
+          <div id="createUserMsg"></div>
+        </div>
+
+        <div class="section">
+          <h2>Users</h2>
+          <table id="usersTable">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Subscription</th>
+                <th>Images</th>
+                <th>Followers</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Images Tab -->
+      <div id="images-tab" style="display: none;">
+        <div class="section">
+          <h2>Recent Images</h2>
+          <div class="image-grid" id="imagesGrid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let apiKey = localStorage.getItem('adminApiKey') || '';
+    const API_BASE = window.location.origin + '/api/admin';
+
+    // Check if already logged in
+    if (apiKey) {
+      checkAuth();
+    }
+
+    async function checkAuth() {
+      try {
+        const res = await fetch(`${API_BASE}/stats`, {
+          headers: { 'X-Admin-Key': apiKey }
+        });
+        if (res.ok) {
+          showDashboard();
+          loadStats();
+        } else {
+          logout();
+        }
+      } catch (e) {
+        logout();
+      }
+    }
+
+    async function login() {
+      apiKey = document.getElementById('apiKey').value;
+      try {
+        const res = await fetch(`${API_BASE}/stats`, {
+          headers: { 'X-Admin-Key': apiKey }
+        });
+        if (res.ok) {
+          localStorage.setItem('adminApiKey', apiKey);
+          showDashboard();
+          loadStats();
+        } else {
+          document.getElementById('authError').textContent = 'Invalid API key';
+        }
+      } catch (e) {
+        document.getElementById('authError').textContent = 'Connection error';
+      }
+    }
+
+    function logout() {
+      apiKey = '';
+      localStorage.removeItem('adminApiKey');
+      document.getElementById('authForm').style.display = 'block';
+      document.getElementById('dashboard').classList.remove('active');
+    }
+
+    function showDashboard() {
+      document.getElementById('authForm').style.display = 'none';
+      document.getElementById('dashboard').classList.add('active');
+    }
+
+    function showTab(tab) {
+      ['stats', 'users', 'images'].forEach(t => {
+        document.getElementById(t + '-tab').style.display = t === tab ? 'block' : 'none';
+      });
+      document.querySelectorAll('.nav button').forEach((btn, i) => {
+        btn.classList.toggle('active', ['stats', 'users', 'images'][i] === tab);
+      });
+      
+      if (tab === 'users') loadUsers();
+      if (tab === 'images') loadImages();
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API_BASE}/stats`, {
+          headers: { 'X-Admin-Key': apiKey }
+        });
+        const data = await res.json();
+        
+        document.getElementById('totalUsers').textContent = data.totalUsers;
+        document.getElementById('totalImages').textContent = data.totalImages;
+        document.getElementById('totalVideos').textContent = data.totalVideos;
+        document.getElementById('usersWithImages').textContent = data.usersWithImages;
+        document.getElementById('newUsersToday').textContent = data.newUsersToday;
+        document.getElementById('newImagesThisWeek').textContent = data.newImagesThisWeek;
+        document.getElementById('beginnerCount').textContent = data.subscriptionBreakdown.beginner;
+        document.getElementById('intermediateCount').textContent = data.subscriptionBreakdown.intermediate;
+        document.getElementById('advancedCount').textContent = data.subscriptionBreakdown.advanced;
+      } catch (e) {
+        console.error('Failed to load stats', e);
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        const res = await fetch(`${API_BASE}/users`, {
+          headers: { 'X-Admin-Key': apiKey }
+        });
+        const users = await res.json();
+        
+        const tbody = document.getElementById('usersBody');
+        tbody.innerHTML = users.map(u => `
+          <tr>
+            <td>${u.username}</td>
+            <td>${u.email}</td>
+            <td>
+              <select onchange="updateSubscription('${u.userId}', this.value)">
+                <option value="beginner" ${u.subscriptionLevel === 'beginner' ? 'selected' : ''}>Beginner</option>
+                <option value="intermediate" ${u.subscriptionLevel === 'intermediate' ? 'selected' : ''}>Intermediate</option>
+                <option value="advanced" ${u.subscriptionLevel === 'advanced' ? 'selected' : ''}>Advanced</option>
+              </select>
+            </td>
+            <td>${u.imageCount}</td>
+            <td>${u.followersCount}</td>
+            <td>${new Date(u.createdAt).toLocaleDateString()}</td>
+            <td>
+              <button class="btn btn-danger" onclick="deleteUser('${u.userId}')">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        console.error('Failed to load users', e);
+      }
+    }
+
+    async function createUser() {
+      const username = document.getElementById('newUsername').value;
+      const email = document.getElementById('newEmail').value;
+      const password = document.getElementById('newPassword').value;
+      const subscriptionLevel = document.getElementById('newSubscription').value;
+      
+      try {
+        const res = await fetch(`${API_BASE}/users/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': apiKey
+          },
+          body: JSON.stringify({ username, email, password, subscriptionLevel })
+        });
+        const data = await res.json();
+        
+        const msgEl = document.getElementById('createUserMsg');
+        if (res.ok) {
+          msgEl.className = 'success';
+          msgEl.textContent = `Created user: ${data.user.username}`;
+          document.getElementById('newUsername').value = '';
+          document.getElementById('newEmail').value = '';
+          document.getElementById('newPassword').value = '';
+          loadUsers();
+        } else {
+          msgEl.className = 'error';
+          msgEl.textContent = data.message;
+        }
+      } catch (e) {
+        document.getElementById('createUserMsg').className = 'error';
+        document.getElementById('createUserMsg').textContent = 'Failed to create user';
+      }
+    }
+
+    async function deleteUser(userId) {
+      if (!confirm('Delete this user and all their data?')) return;
+      
+      try {
+        await fetch(`${API_BASE}/users/${userId}`, {
+          method: 'DELETE',
+          headers: { 'X-Admin-Key': apiKey }
+        });
+        loadUsers();
+      } catch (e) {
+        alert('Failed to delete user');
+      }
+    }
+
+    async function updateSubscription(userId, level) {
+      try {
+        await fetch(`${API_BASE}/users/${userId}/subscription`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': apiKey
+          },
+          body: JSON.stringify({ subscriptionLevel: level })
+        });
+      } catch (e) {
+        alert('Failed to update subscription');
+        loadUsers();
+      }
+    }
+
+    async function loadImages() {
+      try {
+        const res = await fetch(`${API_BASE}/images`, {
+          headers: { 'X-Admin-Key': apiKey }
+        });
+        const images = await res.json();
+        
+        const grid = document.getElementById('imagesGrid');
+        if (images.length === 0) {
+          grid.innerHTML = '<p style="color: #888;">No images uploaded yet</p>';
+          return;
+        }
+        
+        grid.innerHTML = images.map(img => `
+          <div class="image-card">
+            <img src="${img.imageUrl}" alt="User image" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22><rect fill=%22%23333%22 width=%22150%22 height=%22150%22/><text fill=%22%23666%22 x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22>No Image</text></svg>'">
+            <div class="info">
+              <div>User: ${img.userId.slice(0, 12)}...</div>
+              <div>${new Date(img.createdAt).toLocaleDateString()}</div>
+              <button class="btn btn-danger" style="margin-top: 5px;" onclick="deleteImage('${img.imageId}')">Delete</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('Failed to load images', e);
+      }
+    }
+
+    async function deleteImage(imageId) {
+      if (!confirm('Delete this image?')) return;
+      
+      try {
+        await fetch(`${API_BASE}/images/${imageId}`, {
+          method: 'DELETE',
+          headers: { 'X-Admin-Key': apiKey }
+        });
+        loadImages();
+      } catch (e) {
+        alert('Failed to delete image');
+      }
+    }
+  </script>
+</body>
+</html>
