@@ -57,6 +57,44 @@ router.get('/stats', authenticateAdmin, async (req: Request, res: Response) => {
   }
 });
 
+// Get single user details
+router.get('/users/:userId', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    
+    const user = await User.findOne({ userId }).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Get image and video counts
+    const imageCount = await Image.countDocuments({ userId });
+    const videoCount = await Video.countDocuments({ userId });
+
+    res.json({
+      userId: user.userId,
+      username: user.username,
+      email: user.email,
+      verified: user.verified,
+      subscriptionLevel: user.subscriptionLevel,
+      bio: user.bio || '',
+      avatarUrl: user.avatarUrl || '',
+      followingCount: user.followingCount,
+      followersCount: user.followersCount,
+      likesCount: user.likesCount,
+      address: user.address || '',
+      city: user.city || '',
+      state: user.state || '',
+      createdAt: user.createdAt,
+      imageCount,
+      videoCount,
+    });
+  } catch (error) {
+    console.error('Get user details error:', error);
+    res.status(500).json({ message: 'Failed to fetch user details' });
+  }
+});
+
 // List all users
 router.get('/users', authenticateAdmin, async (req: Request, res: Response) => {
   try {
