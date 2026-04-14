@@ -60,10 +60,7 @@ const LoginScreen = () => {
         });
 
         Alert.alert('Welcome back!', `Logged in as ${result.user.username}`);
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs' as never }],
-        });
+        // Navigation happens automatically via conditional rendering in App.tsx
       } else {
         Alert.alert('Login Failed', result.message || 'Invalid credentials');
       }

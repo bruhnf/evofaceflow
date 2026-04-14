@@ -23,10 +23,7 @@ const SettingsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             await logout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' as never }],
-            });
+            // Navigation happens automatically via conditional rendering in App.tsx
           },
         },
       ]
