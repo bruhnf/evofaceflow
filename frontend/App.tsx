@@ -14,6 +14,7 @@ import ProfilePhotoUploadScreen from './src/screens/ProfilePhotoUploadScreen';
 import FriendsScreen from './src/screens/FriendsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import InboxScreen from './src/screens/InboxScreen';
 import { useUserStore } from './src/store/useUserStore';
 
 const Stack = createNativeStackNavigator();
@@ -59,14 +60,14 @@ const MainTabs = () => (
       }}
     />
     <Tab.Screen 
+      name="Inbox" 
+      component={InboxScreen} 
+      options={{ tabBarIcon: ({ color }) => <Ionicons name="mail" size={24} color={color} /> }}
+    />
+    <Tab.Screen 
       name="Profile" 
       component={ProfileScreen} 
       options={{ tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} /> }}
-    />
-    <Tab.Screen 
-      name="Settings" 
-      component={SettingsScreen}
-      options={{ tabBarIcon: ({ color }) => <Ionicons name="settings" size={24} color={color} /> }}
     />
   </Tab.Navigator>
 );

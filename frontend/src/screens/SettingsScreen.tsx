@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useUserStore } from '../store/useUserStore';
+import ProfileDropdown from '../components/ProfileDropdown';
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
@@ -71,7 +72,10 @@ const SettingsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Settings</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Settings</Text>
+        <ProfileDropdown />
+      </View>
       
       <ScrollView style={styles.scrollView}>
         {/* Account Section */}
@@ -179,7 +183,14 @@ const SettingsScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', paddingVertical: 15, backgroundColor: '#fff' },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    backgroundColor: '#fff',
+  },
+  title: { fontSize: 28, fontWeight: 'bold', paddingVertical: 15 },
   scrollView: { flex: 1 },
   
   sectionTitle: { 

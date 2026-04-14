@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
+import ProfileDropdown from '../components/ProfileDropdown';
 
 interface UserItem {
   userId: string;
@@ -254,7 +255,10 @@ const FriendsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Friends</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Friends</Text>
+        <ProfileDropdown />
+      </View>
       
       {/* Tabs */}
       <View style={styles.tabContainer}>
@@ -340,7 +344,13 @@ const FriendsScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', paddingVertical: 15 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  title: { fontSize: 28, fontWeight: 'bold', paddingVertical: 15 },
   
   tabContainer: { 
     flexDirection: 'row', 

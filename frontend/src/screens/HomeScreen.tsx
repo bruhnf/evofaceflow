@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ProfileDropdown from '../components/ProfileDropdown';
 
 interface FeedItem {
   imageId: string;
@@ -103,6 +104,7 @@ const HomeScreen = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>EvoFaceFlow</Text>
+          <ProfileDropdown />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#000" />
@@ -115,6 +117,7 @@ const HomeScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>EvoFaceFlow</Text>
+        <ProfileDropdown />
       </View>
       
       <FlatList
@@ -174,7 +177,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 15,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
