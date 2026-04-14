@@ -495,7 +495,7 @@
         
         grid.innerHTML = images.map(img => `
           <div class="image-card">
-            <img src="${img.imageUrl}" alt="User image" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22><rect fill=%22%23333%22 width=%22150%22 height=%22150%22/><text fill=%22%23666%22 x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22>No Image</text></svg>'">
+            <img src="${img.imageUrl}" crossorigin="anonymous" alt="User image" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22><rect fill=%22%23333%22 width=%22150%22 height=%22150%22/><text fill=%22%23666%22 x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22>No Image</text></svg>'">
             <div class="info">
               <div>User: ${img.userId.slice(0, 12)}...</div>
               <div>${new Date(img.createdAt).toLocaleDateString()}</div>

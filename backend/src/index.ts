@@ -25,6 +25,8 @@ const PORT = parseInt(process.env.PORT || '5000', 10);
 
 // Serve admin dashboard BEFORE helmet (needs inline scripts)
 app.get('/admin', (req, res) => {
+  // Disable CSP for admin page to allow inline scripts and event handlers
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src-attr 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'");
   res.sendFile(path.join(__dirname, '../public/admin.html'));
 });
 
