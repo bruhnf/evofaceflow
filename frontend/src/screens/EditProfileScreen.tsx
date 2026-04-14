@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserStore } from '../store/useUserStore';
 import { API_BASE_URL } from '../config/api';
@@ -57,9 +58,16 @@ const EditProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Edit Profile</Text>
+      {/* Header with Back Arrow */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <View style={styles.headerSpacer} />
+      </View>
 
+      <View style={styles.content}>
         <TextInput
           style={styles.input}
           placeholder="Username"
@@ -84,10 +92,6 @@ const EditProfileScreen = () => {
             <Text style={styles.saveButtonText}>Save Changes</Text>
           )}
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -95,8 +99,19 @@ const EditProfileScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  backButton: { padding: 5 },
+  headerTitle: { fontSize: 18, fontWeight: '600' },
+  headerSpacer: { width: 34 },
   content: { padding: 20, flex: 1 },
-  title: { fontSize: 26, fontWeight: 'bold', marginBottom: 30, textAlign: 'center' },
   input: { 
     borderWidth: 1, 
     borderColor: '#ddd', 
@@ -114,8 +129,6 @@ const styles = StyleSheet.create({
     marginTop: 30 
   },
   saveButtonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
-  cancelButton: { marginTop: 20, alignItems: 'center' },
-  cancelText: { color: '#666', fontSize: 16 },
 });
 
 export default EditProfileScreen;

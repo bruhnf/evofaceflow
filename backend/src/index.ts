@@ -8,6 +8,7 @@ import authRoutes from './routes/auth';
 import uploadRoutes from './routes/upload';
 import videoRoutes from './routes/video';
 import adminRoutes from './routes/admin';
+import friendsRoutes from './routes/friends';
 
 dotenv.config();
 
@@ -63,6 +64,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use('/api/upload', uploadRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/friends', friendsRoutes);
 
 
 mongoose.connect(process.env.MONGO_URI!)

@@ -11,6 +11,9 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import UploadScreen from './src/screens/UploadScreen';
 import EditProfileScreen from './src/screens/EditProfileScreen';
 import ProfilePhotoUploadScreen from './src/screens/ProfilePhotoUploadScreen';
+import FriendsScreen from './src/screens/FriendsScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import HomeScreen from './src/screens/HomeScreen';
 import { useUserStore } from './src/store/useUserStore';
 
 const Stack = createNativeStackNavigator();
@@ -27,12 +30,12 @@ const MainTabs = () => (
   >
     <Tab.Screen 
       name="Home" 
-      component={() => <View style={{flex:1, justifyContent:'center', alignItems:'center'}}><Text>Home Feed (coming soon)</Text></View>} 
+      component={HomeScreen}
       options={{ tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} /> }}
     />
     <Tab.Screen 
       name="Friends" 
-      component={() => <View style={{flex:1, justifyContent:'center', alignItems:'center'}}><Text>Friends (coming soon)</Text></View>} 
+      component={FriendsScreen}
       options={{ tabBarIcon: ({ color }) => <Ionicons name="people" size={24} color={color} /> }}
     />
     <Tab.Screen 
@@ -62,7 +65,7 @@ const MainTabs = () => (
     />
     <Tab.Screen 
       name="Settings" 
-      component={() => <View style={{flex:1, justifyContent:'center', alignItems:'center'}}><Text>Settings (coming soon)</Text></View>} 
+      component={SettingsScreen}
       options={{ tabBarIcon: ({ color }) => <Ionicons name="settings" size={24} color={color} /> }}
     />
   </Tab.Navigator>
