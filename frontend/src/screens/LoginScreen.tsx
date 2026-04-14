@@ -60,7 +60,10 @@ const LoginScreen = () => {
         });
 
         Alert.alert('Welcome back!', `Logged in as ${result.user.username}`);
-        navigation.goBack();
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' as never }],
+        });
       } else {
         Alert.alert('Login Failed', result.message || 'Invalid credentials');
       }
