@@ -1,4 +1,4 @@
-# backend/Dockerfile
+# backend/Dockerfile (Development)
 
 # Use official lightweight Node.js image (Alpine is small and fast)
 FROM node:20-alpine
@@ -9,8 +9,8 @@ WORKDIR /app
 # Copy package files first (this helps with caching layers)
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including devDependencies for ts-node-dev)
+RUN npm ci
 
 # Copy the rest of the backend code
 COPY . .
@@ -19,5 +19,4 @@ COPY . .
 EXPOSE 5000
 
 # Command to start the server in development mode
-# (We will change this later for production)
 CMD ["npm", "run", "dev"]
