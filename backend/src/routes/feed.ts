@@ -19,11 +19,11 @@ router.get('/random', authenticateToken, async (req: Request, res: Response) => 
     // Get user info for each image
     const userIds = [...new Set(images.map(img => img.userId))];
     const users = await User.find({ userId: { $in: userIds } })
-      .select('userId username profilePhotoUrl');
+      .select('userId username avatarUrl');
     
     const userMap = new Map(users.map(u => [u.userId, {
       username: u.username,
-      profilePhotoUrl: u.profilePhotoUrl,
+      avatarUrl: u.avatarUrl,
     }]));
 
     // Attach user info to images
@@ -33,7 +33,7 @@ router.get('/random', authenticateToken, async (req: Request, res: Response) => 
       thumbnailUrl: img.thumbnailUrl,
       userId: img.userId,
       username: userMap.get(img.userId)?.username || 'Unknown',
-      profilePhotoUrl: userMap.get(img.userId)?.profilePhotoUrl,
+      avatarUrl: userMap.get(img.userId)?.avatarUrl,
       createdAt: img.createdAt,
     }));
 
@@ -71,11 +71,11 @@ router.get('/following', authenticateToken, async (req: Request, res: Response) 
 
     // Get user info
     const users = await User.find({ userId: { $in: followingIds } })
-      .select('userId username profilePhotoUrl');
+      .select('userId username avatarUrl');
     
     const userMap = new Map(users.map(u => [u.userId, {
       username: u.username,
-      profilePhotoUrl: u.profilePhotoUrl,
+      avatarUrl: u.avatarUrl,
     }]));
 
     const feedItems = images.map(img => ({
@@ -84,7 +84,7 @@ router.get('/following', authenticateToken, async (req: Request, res: Response) 
       thumbnailUrl: img.thumbnailUrl,
       userId: img.userId,
       username: userMap.get(img.userId)?.username || 'Unknown',
-      profilePhotoUrl: userMap.get(img.userId)?.profilePhotoUrl,
+      avatarUrl: userMap.get(img.userId)?.avatarUrl,
       createdAt: img.createdAt,
     }));
 

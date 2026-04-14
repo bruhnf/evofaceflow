@@ -11,7 +11,7 @@ interface FeedItem {
   thumbnailUrl?: string;
   userId: string;
   username: string;
-  profilePhotoUrl?: string;
+  avatarUrl?: string;
   createdAt: string;
 }
 
@@ -62,8 +62,8 @@ const HomeScreen = () => {
         resizeMode="cover"
       />
       <View style={styles.userInfo}>
-        {item.profilePhotoUrl ? (
-          <Image source={{ uri: item.profilePhotoUrl }} style={styles.profilePhoto} />
+        {item.avatarUrl ? (
+          <Image source={{ uri: item.avatarUrl }} style={styles.profilePhoto} />
         ) : (
           <View style={styles.profilePlaceholder}>
             <Ionicons name="person" size={12} color="#999" />
