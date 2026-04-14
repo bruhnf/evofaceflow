@@ -192,7 +192,7 @@
       background: #16213e;
       border-radius: 12px;
       padding: 25px;
-      max-width: 500px;
+      max-width: 650px;
       width: 90%;
       max-height: 80vh;
       overflow-y: auto;
@@ -631,8 +631,32 @@
         const user = await res.json();
         
         const avatarHtml = user.avatarUrl 
-          ? `<img src="${user.avatarUrl}" class="user-avatar" alt="Avatar" onerror="this.style.display='none'">`
+          ? `<img src="${user.avatarUrl}" class="user-avatar" crossorigin="anonymous" alt="Avatar" onerror="this.style.display='none'">`
           : '';
+        
+        // Build locations table
+        let locationsHtml = '';
+        if (user.locations && user.locations.length > 0) {
+          locationsHtml = `
+            <h3 style="color: #00d4ff; margin-top: 20px; margin-bottom: 10px; font-size: 1rem;">Login Locations (last ${user.locations.length})</h3>
+            <table style="width: 100%; font-size: 0.8rem;">
+              <tr style="color: #888; text-align: left;">
+                <th style="padding: 5px;">Date</th>
+                <th style="padding: 5px;">Location</th>
+                <th style="padding: 5px;">IP</th>
+              </tr>
+              ${user.locations.map(loc => `
+                <tr style="border-bottom: 1px solid #2a2a4e;">
+                  <td style="padding: 5px;">${new Date(loc.timestamp).toLocaleString()}</td>
+                  <td style="padding: 5px;">${[loc.city, loc.region, loc.country].filter(Boolean).join(', ') || 'Unknown'}</td>
+                  <td style="padding: 5px;">${loc.ip}</td>
+                </tr>
+              `).join('')}
+            </table>
+          `;
+        } else {
+          locationsHtml = '<p style="color: #888; margin-top: 20px;">No login location history</p>';
+        }
         
         const content = `
           <div style="text-align: center;">${avatarHtml}</div>
@@ -651,6 +675,7 @@
           <div class="user-field"><span class="field-label">City:</span><span class="field-value">${user.city || '(none)'}</span></div>
           <div class="user-field"><span class="field-label">State:</span><span class="field-value">${user.state || '(none)'}</span></div>
           <div class="user-field"><span class="field-label">Created:</span><span class="field-value">${new Date(user.createdAt).toLocaleString()}</span></div>
+          ${locationsHtml}
         `;
         
         document.getElementById('userModalContent').innerHTML = content;

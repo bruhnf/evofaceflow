@@ -72,6 +72,11 @@ router.get('/users/:userId', authenticateAdmin, async (req: Request, res: Respon
     const imageCount = await Image.countDocuments({ userId });
     const videoCount = await Video.countDocuments({ userId });
 
+    // Get location history
+    const locations = await UserLocation.find({ userId })
+      .sort({ timestamp: -1 })
+      .limit(20);
+
     res.json({
       userId: user.userId,
       username: user.username,
@@ -89,6 +94,7 @@ router.get('/users/:userId', authenticateAdmin, async (req: Request, res: Respon
       createdAt: user.createdAt,
       imageCount,
       videoCount,
+      locations,
     });
   } catch (error) {
     console.error('Get user details error:', error);
