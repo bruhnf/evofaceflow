@@ -275,6 +275,7 @@
         <button class="active" onclick="showTab('stats')">Dashboard</button>
         <button onclick="showTab('users')">Users</button>
         <button onclick="showTab('images')">Images</button>
+        <button onclick="showTab('security')">Security</button>
       </div>
 
       <!-- Stats Tab -->
@@ -373,6 +374,48 @@
           <div class="image-grid" id="imagesGrid"></div>
         </div>
       </div>
+
+      <!-- Security Tab -->
+      <div id="security-tab" style="display: none;">
+        <div class="stats-grid">
+          <div class="stat-card" style="border-left: 3px solid #ff4757;">
+            <div class="value" id="suspicious24h" style="color: #ff4757;">-</div>
+            <div class="label">Suspicious (24h)</div>
+          </div>
+          <div class="stat-card" style="border-left: 3px solid #ffa502;">
+            <div class="value" id="suspicious7d" style="color: #ffa502;">-</div>
+            <div class="label">Suspicious (7d)</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="suspiciousTotal">-</div>
+            <div class="label">Total Flagged</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="suspiciousUsers">-</div>
+            <div class="label">Unique Users</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>🚨 Suspicious Login Attempts</h2>
+          <p style="color: #888; margin-bottom: 15px; font-size: 0.9rem;">
+            Logins flagged when user appears to travel >500 miles in under 2 hours (impossible velocity)
+          </p>
+          <table id="suspiciousTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Location</th>
+                <th>Distance</th>
+                <th>IP</th>
+              </tr>
+            </thead>
+            <tbody id="suspiciousBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -446,15 +489,16 @@
     }
 
     function showTab(tab) {
-      ['stats', 'users', 'images'].forEach(t => {
+      ['stats', 'users', 'images', 'security'].forEach(t => {
         document.getElementById(t + '-tab').style.display = t === tab ? 'block' : 'none';
       });
       document.querySelectorAll('.nav button').forEach((btn, i) => {
-        btn.classList.toggle('active', ['stats', 'users', 'images'][i] === tab);
+        btn.classList.toggle('active', ['stats', 'users', 'images', 'security'][i] === tab);
       });
       
       if (tab === 'users') loadUsers();
       if (tab === 'images') loadImages();
+      if (tab === 'security') loadSecurity();
     }
 
     async function loadStats() {
@@ -617,6 +661,46 @@
       }
     }
 
+    async function loadSecurity() {
+      try {
+        // Load suspicious stats
+        const statsRes = await fetch(`${API_BASE}/stats/suspicious`, {
+          headers: { 'X-Admin-Key': apiKey }
+        });
+        const stats = await statsRes.json();
+        
+        document.getElementById('suspicious24h').textContent = stats.last24Hours;
+        document.getElementById('suspicious7d').textContent = stats.last7Days;
+        document.getElementById('suspiciousTotal').textContent = stats.total;
+        document.getElementById('suspiciousUsers').textContent = stats.uniqueUsers;
+
+        // Load suspicious logins list
+        const logsRes = await fetch(`${API_BASE}/locations/suspicious?limit=50`, {
+          headers: { 'X-Admin-Key': apiKey }
+        });
+        const logs = await logsRes.json();
+        
+        const tbody = document.getElementById('suspiciousBody');
+        if (logs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No suspicious logins detected ✓</td></tr>';
+          return;
+        }
+        
+        tbody.innerHTML = logs.map(loc => `
+          <tr style="background: rgba(255, 71, 87, 0.1);">
+            <td>${new Date(loc.timestamp).toLocaleString()}</td>
+            <td><span class="username-link" onclick="showUserDetails('${loc.userId}')">${loc.username}</span></td>
+            <td>${loc.email}</td>
+            <td>${[loc.city, loc.region, loc.country].filter(Boolean).join(', ') || 'Unknown'}</td>
+            <td style="color: #ff4757; font-weight: bold;">${loc.distanceFromLast ? loc.distanceFromLast + ' mi' : '-'}</td>
+            <td style="font-family: monospace; font-size: 0.85rem;">${loc.ip}</td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        console.error('Failed to load security data', e);
+      }
+    }
+
     async function showUserDetails(userId) {
       try {
         const res = await fetch(`${API_BASE}/users/${userId}`, {
@@ -637,18 +721,24 @@
         // Build locations table
         let locationsHtml = '';
         if (user.locations && user.locations.length > 0) {
+          const hasSuspicious = user.locations.some(loc => loc.suspiciousLocation);
           locationsHtml = `
-            <h3 style="color: #00d4ff; margin-top: 20px; margin-bottom: 10px; font-size: 1rem;">Login Locations (last ${user.locations.length})</h3>
+            <h3 style="color: #00d4ff; margin-top: 20px; margin-bottom: 10px; font-size: 1rem;">
+              Login Locations (last ${user.locations.length})
+              ${hasSuspicious ? '<span style="color: #ff4757; margin-left: 10px;">⚠️ Suspicious activity detected</span>' : ''}
+            </h3>
             <table style="width: 100%; font-size: 0.8rem;">
               <tr style="color: #888; text-align: left;">
                 <th style="padding: 5px;">Date</th>
                 <th style="padding: 5px;">Location</th>
+                <th style="padding: 5px;">Distance</th>
                 <th style="padding: 5px;">IP</th>
               </tr>
               ${user.locations.map(loc => `
-                <tr style="border-bottom: 1px solid #2a2a4e;">
-                  <td style="padding: 5px;">${new Date(loc.timestamp).toLocaleString()}</td>
+                <tr style="border-bottom: 1px solid #2a2a4e; ${loc.suspiciousLocation ? 'background: rgba(255, 71, 87, 0.2);' : ''}">
+                  <td style="padding: 5px;">${loc.suspiciousLocation ? '🚨 ' : ''}${new Date(loc.timestamp).toLocaleString()}</td>
                   <td style="padding: 5px;">${[loc.city, loc.region, loc.country].filter(Boolean).join(', ') || 'Unknown'}</td>
+                  <td style="padding: 5px; ${loc.suspiciousLocation ? 'color: #ff4757; font-weight: bold;' : ''}">${loc.distanceFromLast ? loc.distanceFromLast + ' mi' : '-'}</td>
                   <td style="padding: 5px;">${loc.ip}</td>
                 </tr>
               `).join('')}

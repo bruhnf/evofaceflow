@@ -307,4 +307,64 @@ router.get('/locations/recent', authenticateAdmin, async (req: Request, res: Res
   }
 });
 
+// Get suspicious login attempts
+router.get('/locations/suspicious', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+    
+    const locations = await UserLocation.find({ suspiciousLocation: true })
+      .sort({ timestamp: -1 })
+      .limit(limit);
+
+    // Get usernames for each location
+    const userIds = [...new Set(locations.map(loc => loc.userId))];
+    const users = await User.find({ userId: { $in: userIds } }).select('userId username email');
+    const userMap = new Map(users.map(u => [u.userId, { username: u.username, email: u.email }]));
+
+    const locationsWithDetails = locations.map(loc => ({
+      ...loc.toObject(),
+      username: userMap.get(loc.userId)?.username || 'Unknown',
+      email: userMap.get(loc.userId)?.email || 'Unknown',
+    }));
+
+    res.json(locationsWithDetails);
+  } catch (error) {
+    console.error('Get suspicious locations error:', error);
+    res.status(500).json({ message: 'Failed to fetch suspicious locations' });
+  }
+});
+
+// Get count of suspicious logins (for stats)
+router.get('/stats/suspicious', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const last7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const suspicious24h = await UserLocation.countDocuments({
+      suspiciousLocation: true,
+      timestamp: { $gte: last24h }
+    });
+
+    const suspicious7d = await UserLocation.countDocuments({
+      suspiciousLocation: true,
+      timestamp: { $gte: last7d }
+    });
+
+    const totalSuspicious = await UserLocation.countDocuments({ suspiciousLocation: true });
+
+    // Get unique users with suspicious logins
+    const suspiciousUsers = await UserLocation.distinct('userId', { suspiciousLocation: true });
+
+    res.json({
+      last24Hours: suspicious24h,
+      last7Days: suspicious7d,
+      total: totalSuspicious,
+      uniqueUsers: suspiciousUsers.length,
+    });
+  } catch (error) {
+    console.error('Get suspicious stats error:', error);
+    res.status(500).json({ message: 'Failed to fetch suspicious stats' });
+  }
+});
+
 export default router;
