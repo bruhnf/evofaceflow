@@ -23,6 +23,11 @@ if (!process.env.JWT_SECRET) {
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
 
+// Serve admin dashboard BEFORE helmet (needs inline scripts)
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/admin.html'));
+});
+
 // Security middleware
 app.use(helmet());
 
@@ -79,11 +84,6 @@ app.use('/api/auth', authRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'EvoFaceFlow backend is running!' });
-});
-
-// Serve admin dashboard
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/admin.html'));
 });
 
 // app.listen(PORT, () => {
