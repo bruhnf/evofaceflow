@@ -308,19 +308,33 @@
 
     async function login() {
       apiKey = document.getElementById('apiKey').value;
+      const errEl = document.getElementById('authError');
+      errEl.textContent = 'Logging in...';
+      
+      if (!apiKey) {
+        errEl.textContent = 'Please enter an API key';
+        return;
+      }
+      
       try {
+        console.log('Attempting login to:', API_BASE + '/stats');
         const res = await fetch(`${API_BASE}/stats`, {
           headers: { 'X-Admin-Key': apiKey }
         });
+        console.log('Response status:', res.status);
+        
         if (res.ok) {
           localStorage.setItem('adminApiKey', apiKey);
           showDashboard();
           loadStats();
         } else {
-          document.getElementById('authError').textContent = 'Invalid API key';
+          const text = await res.text();
+          console.log('Error response:', text);
+          errEl.textContent = `Invalid API key (${res.status})`;
         }
       } catch (e) {
-        document.getElementById('authError').textContent = 'Connection error';
+        console.error('Login error:', e);
+        errEl.textContent = 'Connection error: ' + e.message;
       }
     }
 
