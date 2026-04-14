@@ -1,11 +1,23 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { User } from '../models/User';
+import { addUserLocation } from '../models/UserLocation';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import geoip from 'geoip-lite';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
+
+// Helper to get client IP from request
+const getClientIp = (req: Request): string => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    const ips = (typeof forwarded === 'string' ? forwarded : forwarded[0]).split(',');
+    return ips[0].trim();
+  }
+  return req.ip || req.socket.remoteAddress || 'unknown';
+};
 
 const getJwtSecret = (): string => {
   const secret = process.env.JWT_SECRET;
@@ -86,6 +98,13 @@ router.post('/login', loginValidation, async (req: Request, res: Response) => {
       getJwtSecret(),
       { expiresIn: '7d' }
     );
+
+    // Track user location on login
+    const clientIp = getClientIp(req);
+    const geo = geoip.lookup(clientIp);
+    addUserLocation(user.userId, clientIp, geo).catch(err => {
+      console.error('Failed to log user location:', err);
+    });
 
     res.json({
       message: 'Login successful',

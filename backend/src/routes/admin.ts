@@ -3,6 +3,7 @@ import { User } from '../models/User';
 import { Video } from '../models/Video';
 import { Image } from '../models/Image';
 import { Follow } from '../models/Follow';
+import { UserLocation } from '../models/UserLocation';
 import { authenticateAdmin } from '../middleware/auth';
 import bcrypt from 'bcryptjs';
 
@@ -188,6 +189,7 @@ router.delete('/users/:userId', authenticateAdmin, async (req: Request, res: Res
     await Image.deleteMany({ userId });
     await Video.deleteMany({ userId });
     await Follow.deleteMany({ $or: [{ followerId: userId }, { followingId: userId }] });
+    await UserLocation.deleteMany({ userId });
     await User.deleteOne({ userId });
 
     res.json({ message: 'User and all associated data deleted' });
@@ -254,6 +256,48 @@ router.delete('/images/:imageId', authenticateAdmin, async (req: Request, res: R
   } catch (error) {
     console.error('Delete image error:', error);
     res.status(500).json({ message: 'Failed to delete image' });
+  }
+});
+
+// Get user locations (last 20 login locations)
+router.get('/users/:userId/locations', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    
+    const locations = await UserLocation.find({ userId })
+      .sort({ timestamp: -1 })
+      .limit(20);
+
+    res.json(locations);
+  } catch (error) {
+    console.error('Get user locations error:', error);
+    res.status(500).json({ message: 'Failed to fetch user locations' });
+  }
+});
+
+// Get all recent locations across all users
+router.get('/locations/recent', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+    
+    const locations = await UserLocation.find()
+      .sort({ timestamp: -1 })
+      .limit(limit);
+
+    // Get usernames for each location
+    const userIds = [...new Set(locations.map(loc => loc.userId))];
+    const users = await User.find({ userId: { $in: userIds } }).select('userId username');
+    const userMap = new Map(users.map(u => [u.userId, u.username]));
+
+    const locationsWithUsername = locations.map(loc => ({
+      ...loc.toObject(),
+      username: userMap.get(loc.userId) || 'Unknown',
+    }));
+
+    res.json(locationsWithUsername);
+  } catch (error) {
+    console.error('Get recent locations error:', error);
+    res.status(500).json({ message: 'Failed to fetch locations' });
   }
 });
 
