@@ -455,14 +455,6 @@ router.put('/settings/:key', authenticateAdmin, async (req: Request, res: Respon
       return res.status(400).json({ message: 'Value is required' });
     }
 
-    // Validate specific settings
-    if (key === 'fillerImagePercent') {
-      const percent = Number(value);
-      if (isNaN(percent) || percent < 0 || percent > 100) {
-        return res.status(400).json({ message: 'Filler percentage must be between 0 and 100' });
-      }
-    }
-
     await setSetting(key, value);
     res.json({ message: 'Setting updated', key, value });
   } catch (error) {

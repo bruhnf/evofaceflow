@@ -424,35 +424,8 @@
           <h2>⚙️ App Settings</h2>
           
           <div style="margin-top: 20px;">
-            <h3 style="color: #00d4ff; margin-bottom: 15px;">Feed Configuration</h3>
-            
-            <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
-              <label style="color: #888; width: 200px;">Filler Video Percentage:</label>
-              <input type="range" id="fillerPercent" min="0" max="100" value="30" 
-                style="flex: 1; max-width: 300px;" 
-                oninput="document.getElementById('fillerPercentValue').textContent = this.value + '%'">
-              <span id="fillerPercentValue" style="color: #00d4ff; font-weight: bold; width: 50px;">30%</span>
-              <button class="btn btn-primary" onclick="saveFillerPercent()">Save</button>
-            </div>
-            <p style="color: #666; font-size: 0.9rem; margin-bottom: 30px;">
-              Controls the percentage of filler videos (from S3 videos/filler/ directory) mixed into the Home feed.
-              Higher values = more filler videos. Set to 0% to disable filler videos entirely.
-            </p>
-
-            <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
-              <label style="color: #888; width: 200px;">S3 Filler Prefix:</label>
-              <input type="text" id="fillerPrefix" value="filler/" 
-                style="flex: 1; max-width: 300px; padding: 8px; background: #1a1a2e; border: none; border-radius: 4px; color: #fff;">
-              <button class="btn btn-primary" onclick="saveFillerPrefix()">Save</button>
-            </div>
-            <p style="color: #666; font-size: 0.9rem;">
-              S3 directory prefix where filler videos are stored. Upload your videos to s3://evofaceflow-uploads/videos/filler/
-            </p>
-          </div>
-
-          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #2a2a4e;">
-            <h3 style="color: #00d4ff; margin-bottom: 15px;">Filler Video Stats</h3>
-            <div id="fillerStats" style="color: #888;">Loading...</div>
+            <p style="color: #888;">No configurable settings at this time.</p>
+            <p style="color: #666; margin-top: 10px;">Future settings will appear here.</p>
           </div>
         </div>
       </div>
@@ -830,83 +803,7 @@
 
     // Settings functions
     async function loadSettings() {
-      try {
-        const res = await fetch(`${API_BASE}/settings`, {
-          headers: { 'X-Admin-Key': apiKey }
-        });
-        const settings = await res.json();
-        
-        // Update filler percent slider
-        if (settings.fillerImagePercent) {
-          const percent = settings.fillerImagePercent.value;
-          document.getElementById('fillerPercent').value = percent;
-          document.getElementById('fillerPercentValue').textContent = percent + '%';
-        }
-        
-        // Update filler prefix
-        if (settings.fillerS3Prefix) {
-          document.getElementById('fillerPrefix').value = settings.fillerS3Prefix.value;
-        }
-
-        // Update filler stats
-        document.getElementById('fillerStats').innerHTML = `
-          <p>Filler videos are mixed into the feed based on the percentage above.</p>
-          <p style="margin-top: 10px;">To add filler videos:</p>
-          <ol style="margin-left: 20px; margin-top: 5px;">
-            <li>Upload videos to your S3 bucket at: <code style="background: #1a1a2e; padding: 2px 6px; border-radius: 3px;">s3://evofaceflow-uploads/videos/filler/</code></li>
-            <li>Videos will automatically appear in the feed</li>
-            <li>Supported formats: MP4, MOV, WebM</li>
-          </ol>
-        `;
-      } catch (e) {
-        console.error('Failed to load settings', e);
-      }
-    }
-
-    async function saveFillerPercent() {
-      const value = parseInt(document.getElementById('fillerPercent').value);
-      try {
-        const res = await fetch(`${API_BASE}/settings/fillerImagePercent`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Admin-Key': apiKey
-          },
-          body: JSON.stringify({ value })
-        });
-        
-        if (res.ok) {
-          alert('Filler percentage saved!');
-        } else {
-          const data = await res.json();
-          alert('Failed to save: ' + data.message);
-        }
-      } catch (e) {
-        alert('Failed to save setting');
-      }
-    }
-
-    async function saveFillerPrefix() {
-      const value = document.getElementById('fillerPrefix').value;
-      try {
-        const res = await fetch(`${API_BASE}/settings/fillerS3Prefix`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Admin-Key': apiKey
-          },
-          body: JSON.stringify({ value })
-        });
-        
-        if (res.ok) {
-          alert('Filler prefix saved!');
-        } else {
-          const data = await res.json();
-          alert('Failed to save: ' + data.message);
-        }
-      } catch (e) {
-        alert('Failed to save setting');
-      }
+      // No settings to load currently
     }
   </script>
 </body>

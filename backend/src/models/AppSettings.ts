@@ -33,15 +33,7 @@ export async function setSetting<T>(key: string, value: T, description?: string)
 
 // Initialize default settings
 export async function initializeSettings(): Promise<void> {
-  const defaults = [
-    { key: 'fillerImagePercent', value: 30, description: 'Percentage of filler videos to mix into feed (0-100)' },
-    { key: 'fillerS3Prefix', value: 'videos/filler/', description: 'S3 prefix for filler videos' },
-  ];
-
-  for (const setting of defaults) {
-    const exists = await AppSettings.findOne({ key: setting.key });
-    if (!exists) {
-      await AppSettings.create(setting);
-    }
-  }
+  // No default settings needed currently
+  // Add app-wide settings here as needed
+  console.log('App settings initialized');
 }
