@@ -11,6 +11,7 @@ import videoRoutes from './routes/video';
 import adminRoutes from './routes/admin';
 import friendsRoutes from './routes/friends';
 import feedRoutes from './routes/feed';
+import { initializeSettings } from './models/AppSettings';
 
 dotenv.config();
 
@@ -78,7 +79,11 @@ app.use('/api/feed', feedRoutes);
 
 
 mongoose.connect(process.env.MONGO_URI!)
-  .then(() => console.log('✅ MongoDB connected'))
+  .then(async () => {
+    console.log('✅ MongoDB connected');
+    await initializeSettings();
+    console.log('✅ App settings initialized');
+  })
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // Routes

@@ -1,19 +1,65 @@
 import { Router, Request, Response } from 'express';
+import { ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { Image } from '../models/Image';
 import { User } from '../models/User';
+import { getSetting } from '../models/AppSettings';
+import { s3Client } from '../config/s3';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-// Get random public images for feed
+// Cache filler images list (refresh every 5 minutes)
+let fillerImagesCache: string[] = [];
+let fillerCacheTime = 0;
+const FILLER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+async function getFillerImages(): Promise<string[]> {
+  const now = Date.now();
+  if (fillerImagesCache.length > 0 && now - fillerCacheTime < FILLER_CACHE_DURATION) {
+    return fillerImagesCache;
+  }
+
+  try {
+    const prefix = await getSetting('fillerS3Prefix', 'filler/');
+    const bucket = process.env.S3_BUCKET!;
+    const region = process.env.AWS_REGION || 'us-east-1';
+
+    const command = new ListObjectsV2Command({
+      Bucket: bucket,
+      Prefix: prefix,
+    });
+
+    const response = await s3Client.send(command);
+    const contents = response.Contents || [];
+
+    // Filter to only image files
+    fillerImagesCache = contents
+      .filter(obj => obj.Key && /\.(jpg|jpeg|png|gif|webp)$/i.test(obj.Key))
+      .map(obj => `https://${bucket}.s3.${region}.amazonaws.com/${obj.Key}`);
+
+    fillerCacheTime = now;
+    console.log(`Cached ${fillerImagesCache.length} filler images from S3`);
+    return fillerImagesCache;
+  } catch (error) {
+    console.error('Failed to list filler images from S3:', error);
+    return [];
+  }
+}
+
+// Get random public images for feed (mixed with filler images)
 router.get('/random', authenticateToken, async (req: Request, res: Response) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
 
+    // Get filler percentage setting
+    const fillerPercent = await getSetting('fillerImagePercent', 30);
+    const fillerCount = Math.round((limit * fillerPercent) / 100);
+    const realCount = limit - fillerCount;
+
     // Get random public images using aggregation
     const images = await Image.aggregate([
       { $match: { isPublic: true } },
-      { $sample: { size: limit } },
+      { $sample: { size: realCount } },
     ]);
 
     // Get user info for each image
@@ -26,8 +72,8 @@ router.get('/random', authenticateToken, async (req: Request, res: Response) => 
       avatarUrl: u.avatarUrl,
     }]));
 
-    // Attach user info to images
-    const feedItems = images.map(img => ({
+    // Real user images
+    const realFeedItems = images.map(img => ({
       imageId: img.imageId,
       imageUrl: img.imageUrl,
       thumbnailUrl: img.thumbnailUrl,
@@ -35,9 +81,37 @@ router.get('/random', authenticateToken, async (req: Request, res: Response) => 
       username: userMap.get(img.userId)?.username || 'Unknown',
       avatarUrl: userMap.get(img.userId)?.avatarUrl,
       createdAt: img.createdAt,
+      isFiller: false,
     }));
 
-    res.json(feedItems);
+    // Get filler images
+    const allFillerImages = await getFillerImages();
+    const fillerFeedItems: any[] = [];
+
+    if (allFillerImages.length > 0 && fillerCount > 0) {
+      // Pick random filler images
+      const shuffled = [...allFillerImages].sort(() => Math.random() - 0.5);
+      const selectedFillers = shuffled.slice(0, Math.min(fillerCount, shuffled.length));
+
+      for (const imageUrl of selectedFillers) {
+        fillerFeedItems.push({
+          imageId: 'filler_' + Math.random().toString(36).substr(2, 9),
+          imageUrl,
+          thumbnailUrl: imageUrl,
+          userId: 'anonymous',
+          username: 'Anonymous User',
+          avatarUrl: null,
+          createdAt: new Date().toISOString(),
+          isFiller: true,
+        });
+      }
+    }
+
+    // Mix real and filler images randomly
+    const allItems = [...realFeedItems, ...fillerFeedItems];
+    const mixedFeed = allItems.sort(() => Math.random() - 0.5);
+
+    res.json(mixedFeed);
   } catch (error) {
     console.error('Feed random error:', error);
     res.status(500).json({ message: 'Failed to fetch feed' });

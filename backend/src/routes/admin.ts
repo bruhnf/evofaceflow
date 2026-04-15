@@ -4,6 +4,7 @@ import { Video } from '../models/Video';
 import { Image } from '../models/Image';
 import { Follow } from '../models/Follow';
 import { UserLocation } from '../models/UserLocation';
+import { AppSettings, getSetting, setSetting } from '../models/AppSettings';
 import { authenticateAdmin } from '../middleware/auth';
 import bcrypt from 'bcryptjs';
 
@@ -364,6 +365,66 @@ router.get('/stats/suspicious', authenticateAdmin, async (req: Request, res: Res
   } catch (error) {
     console.error('Get suspicious stats error:', error);
     res.status(500).json({ message: 'Failed to fetch suspicious stats' });
+  }
+});
+
+// Get all app settings
+router.get('/settings', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const settings = await AppSettings.find();
+    const settingsObj: Record<string, any> = {};
+    for (const s of settings) {
+      settingsObj[s.key] = {
+        value: s.value,
+        description: s.description,
+        updatedAt: s.updatedAt,
+      };
+    }
+    res.json(settingsObj);
+  } catch (error) {
+    console.error('Get settings error:', error);
+    res.status(500).json({ message: 'Failed to fetch settings' });
+  }
+});
+
+// Get specific setting
+router.get('/settings/:key', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const { key } = req.params;
+    const setting = await AppSettings.findOne({ key });
+    if (!setting) {
+      return res.status(404).json({ message: 'Setting not found' });
+    }
+    res.json(setting);
+  } catch (error) {
+    console.error('Get setting error:', error);
+    res.status(500).json({ message: 'Failed to fetch setting' });
+  }
+});
+
+// Update setting
+router.put('/settings/:key', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const { key } = req.params;
+    const { value } = req.body;
+
+    if (value === undefined) {
+      return res.status(400).json({ message: 'Value is required' });
+    }
+
+    // Validate specific settings
+    if (key === 'fillerImagePercent') {
+      const percent = Number(value);
+      if (isNaN(percent) || percent < 0 || percent > 100) {
+        return res.status(400).json({ message: 'Filler percentage must be between 0 and 100' });
+      }
+    }
+
+    await setSetting(key, value);
+    res.json({ message: 'Setting updated', key, value });
+  } catch (error) {
+    console.error('Update setting error:', error);
+    res.status(500).json({ message: 'Failed to update setting' });
   }
 });
 
