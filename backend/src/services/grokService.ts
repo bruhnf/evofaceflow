@@ -3,7 +3,15 @@ import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client } from '../config/s3';
 
 const GROK_API_URL = 'https://api.x.ai/v1/videos/generations';
-const GROK_API_KEY = process.env.GROK_API_KEY;
+
+// Read API key at runtime, not module load time
+function getGrokApiKey(): string {
+  const key = process.env.GROK_API_KEY;
+  if (!key) {
+    throw new Error('GROK_API_KEY is not configured in environment variables');
+  }
+  return key;
+}
 
 interface GrokVideoRequest {
   images: string[]; // Array of image URLs
@@ -59,9 +67,7 @@ async function getImageAsBase64(imageUrl: string): Promise<string> {
  * Submit images to Grok Imagine API for video generation
  */
 export async function generateVideo(request: GrokVideoRequest): Promise<GrokVideoResponse> {
-  if (!GROK_API_KEY) {
-    throw new Error('GROK_API_KEY is not configured');
-  }
+  const apiKey = getGrokApiKey();
 
   try {
     // Convert image URLs to base64 for API submission
@@ -100,7 +106,7 @@ export async function generateVideo(request: GrokVideoRequest): Promise<GrokVide
       requestBody,
       {
         headers: {
-          'Authorization': `Bearer ${GROK_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         timeout: 300000, // 5 minute timeout for video generation
@@ -142,9 +148,7 @@ export async function generateVideo(request: GrokVideoRequest): Promise<GrokVide
  * Check the status of a video generation job
  */
 export async function checkVideoStatus(generationId: string): Promise<GrokVideoResponse> {
-  if (!GROK_API_KEY) {
-    throw new Error('GROK_API_KEY is not configured');
-  }
+  const apiKey = getGrokApiKey();
 
   const url = `${GROK_API_URL}/${generationId}`;
   
@@ -158,7 +162,7 @@ export async function checkVideoStatus(generationId: string): Promise<GrokVideoR
       url,
       {
         headers: {
-          'Authorization': `Bearer ${GROK_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
         },
       }
     );

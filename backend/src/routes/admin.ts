@@ -266,6 +266,49 @@ router.delete('/images/:imageId', authenticateAdmin, async (req: Request, res: R
   }
 });
 
+// Delete video
+router.delete('/videos/:videoId', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const { videoId } = req.params;
+    const video = await Video.findOneAndDelete({ videoId });
+    if (!video) {
+      return res.status(404).json({ message: 'Video not found' });
+    }
+    res.json({ message: 'Video deleted', video });
+  } catch (error) {
+    console.error('Delete video error:', error);
+    res.status(500).json({ message: 'Failed to delete video' });
+  }
+});
+
+// Get all videos (for admin management)
+router.get('/videos', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const status = req.query.status as string;
+    const query = status ? { status } : {};
+    const videos = await Video.find(query).sort({ createdAt: -1 }).limit(100);
+    res.json(videos);
+  } catch (error) {
+    console.error('Get videos error:', error);
+    res.status(500).json({ message: 'Failed to fetch videos' });
+  }
+});
+
+// Bulk delete videos by status (e.g., all processing or failed)
+router.delete('/videos/bulk/:status', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const { status } = req.params;
+    if (!['processing', 'failed', 'completed'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status. Use: processing, failed, or completed' });
+    }
+    const result = await Video.deleteMany({ status });
+    res.json({ message: `Deleted ${result.deletedCount} ${status} videos` });
+  } catch (error) {
+    console.error('Bulk delete videos error:', error);
+    res.status(500).json({ message: 'Failed to delete videos' });
+  }
+});
+
 // Get user locations (last 20 login locations)
 router.get('/users/:userId/locations', authenticateAdmin, async (req: Request, res: Response) => {
   try {

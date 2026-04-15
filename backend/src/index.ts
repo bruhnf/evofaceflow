@@ -1,9 +1,12 @@
+// Load environment variables FIRST before any other imports
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import path from 'path';
 import authRoutes from './routes/auth';
 import uploadRoutes from './routes/upload';
@@ -12,8 +15,6 @@ import adminRoutes from './routes/admin';
 import friendsRoutes from './routes/friends';
 import feedRoutes from './routes/feed';
 import { initializeSettings } from './models/AppSettings';
-
-dotenv.config();
 
 // Validate required environment variables
 if (!process.env.JWT_SECRET) {

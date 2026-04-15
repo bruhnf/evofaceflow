@@ -1,5 +1,7 @@
 import { S3Client } from '@aws-sdk/client-s3';
 
+// Note: This requires dotenv.config() to run BEFORE this module is imported
+// (handled in index.ts with dotenv at the top)
 export const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'us-east-1',
   credentials: {
