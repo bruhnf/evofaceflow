@@ -29,7 +29,7 @@ interface GrokVideoResponse {
 }
 
 /**
- * Download image from S3 and convert to base64
+ * Download image from S3 and convert to raw base64 (no data URI prefix)
  */
 async function getImageAsBase64(imageUrl: string): Promise<string> {
   try {
@@ -48,15 +48,15 @@ async function getImageAsBase64(imageUrl: string): Promise<string> {
       const response = await s3Client.send(command);
       const bodyContents = await response.Body?.transformToByteArray();
       if (bodyContents) {
-        return `data:image/jpeg;base64,${Buffer.from(bodyContents).toString('base64')}`;
+        // Return raw base64 without data URI prefix
+        return Buffer.from(bodyContents).toString('base64');
       }
     }
     
     // Fallback: fetch via HTTP
     const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-    const base64 = Buffer.from(response.data).toString('base64');
-    const contentType = response.headers['content-type'] || 'image/jpeg';
-    return `data:${contentType};base64,${base64}`;
+    // Return raw base64 without data URI prefix
+    return Buffer.from(response.data).toString('base64');
   } catch (error) {
     console.error('Failed to convert image to base64:', imageUrl, error);
     throw error;
@@ -76,14 +76,19 @@ export async function generateVideo(request: GrokVideoRequest): Promise<GrokVide
       request.images.map(url => getImageAsBase64(url))
     );
 
+    // xAI expects images as objects with type and data
     const requestBody = {
-      model: 'grok-2-image', // or whatever the model name is
-      images: base64Images,
+      model: 'grok-2-image',
+      images: base64Images.map(b64 => ({
+        type: 'base64',
+        media_type: 'image/jpeg',
+        data: b64,
+      })),
       parameters: {
         duration: request.duration || 15,
         style: request.style || 'morph',
         fps: request.fps || 24,
-        transition: 'smooth', // smooth morphing between images
+        transition: 'smooth',
       },
     };
 
@@ -97,7 +102,11 @@ export async function generateVideo(request: GrokVideoRequest): Promise<GrokVide
     }, null, 2));
     console.log('Body:', JSON.stringify({
       ...requestBody,
-      images: requestBody.images.map((img, i) => `[BASE64_IMAGE_${i + 1}: ${img.length} chars]`),
+      images: requestBody.images.map((img, i) => ({
+        type: img.type,
+        media_type: img.media_type,
+        data: `[BASE64_IMAGE_${i + 1}: ${img.data.length} chars]`,
+      })),
     }, null, 2));
     console.log('=======================================');
     
