@@ -3,14 +3,16 @@ import { View, Text, StyleSheet, FlatList, RefreshControl, Image, TouchableOpaci
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { Video as ExpoVideo, ResizeMode } from 'expo-av';
 import { API_BASE_URL } from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProfileDropdown from '../components/ProfileDropdown';
 
 interface FeedItem {
-  imageId: string;
-  imageUrl: string;
+  videoId: string;
+  videoUrl: string;
   thumbnailUrl?: string;
+  durationSeconds: number;
   userId: string;
   username: string;
   avatarUrl?: string;
@@ -19,20 +21,22 @@ interface FeedItem {
 
 const { width, height } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
-const IMAGE_SIZE = (width - 48) / COLUMN_COUNT; // 48 = padding (16*2) + gap (16)
-const BATCH_SIZE = 30;
-const PREFETCH_THRESHOLD = 0.5; // Start fetching when 50% from bottom
+const ITEM_WIDTH = (width - 48) / COLUMN_COUNT; // 48 = padding (16*2) + gap (16)
+const ITEM_HEIGHT = ITEM_WIDTH * 1.5; // 3:2 aspect ratio for portrait videos
+const BATCH_SIZE = 20;
+const PREFETCH_THRESHOLD = 0.5;
 
 const HomeScreen = () => {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<FeedItem | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<FeedItem | null>(null);
   
-  // Track seen image IDs to avoid duplicates
-  const seenImageIds = useRef<Set<string>>(new Set());
+  // Track seen video IDs to avoid duplicates
+  const seenVideoIds = useRef<Set<string>>(new Set());
   const isFetchingMore = useRef(false);
+  const videoRef = useRef<ExpoVideo>(null);
 
   const fetchFeed = useCallback(async (append: boolean = false) => {
     // Prevent concurrent fetches
@@ -53,20 +57,20 @@ const HomeScreen = () => {
       if (response.ok) {
         const data: FeedItem[] = await response.json();
         
-        // Prefetch images in background for smoother scrolling
+        // Prefetch thumbnails in background
         data.forEach(item => {
-          Image.prefetch(item.imageUrl).catch(() => {});
+          if (item.thumbnailUrl) Image.prefetch(item.thumbnailUrl).catch(() => {});
           if (item.avatarUrl) Image.prefetch(item.avatarUrl).catch(() => {});
         });
         
         if (append) {
           // Filter out duplicates before appending
-          const newItems = data.filter(item => !seenImageIds.current.has(item.imageId));
-          newItems.forEach(item => seenImageIds.current.add(item.imageId));
+          const newItems = data.filter(item => !seenVideoIds.current.has(item.videoId));
+          newItems.forEach(item => seenVideoIds.current.add(item.videoId));
           setFeedItems(prev => [...prev, ...newItems]);
         } else {
           // Fresh fetch - reset seen IDs
-          seenImageIds.current = new Set(data.map(item => item.imageId));
+          seenVideoIds.current = new Set(data.map(item => item.videoId));
           setFeedItems(data);
         }
       }
@@ -84,7 +88,7 @@ const HomeScreen = () => {
     fetchFeed();
   }, [fetchFeed]);
 
-  // Only refresh on first focus, not every focus (to preserve scroll position)
+  // Only refresh on first focus
   const hasFocused = useRef(false);
   useFocusEffect(
     useCallback(() => {
@@ -92,24 +96,20 @@ const HomeScreen = () => {
         hasFocused.current = true;
         return;
       }
-      // Optional: uncomment below to refresh on every focus
-      // fetchFeed();
     }, [fetchFeed])
   );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchFeed(false); // Fresh fetch, not append
+    fetchFeed(false);
   }, [fetchFeed]);
 
-  // Pre-fetch more images when user scrolls near the bottom
   const onEndReached = useCallback(() => {
     if (!loadingMore && !refreshing) {
-      fetchFeed(true); // Append mode
+      fetchFeed(true);
     }
   }, [fetchFeed, loadingMore, refreshing]);
 
-  // Footer loading indicator
   const renderFooter = () => {
     if (!loadingMore) return null;
     return (
@@ -119,14 +119,36 @@ const HomeScreen = () => {
     );
   };
 
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const renderItem = ({ item }: { item: FeedItem }) => (
     <View style={styles.feedItem}>
-      <TouchableOpacity onPress={() => setSelectedImage(item)} activeOpacity={0.9}>
-        <Image 
-          source={{ uri: item.imageUrl }} 
-          style={styles.feedImage}
-          resizeMode="cover"
-        />
+      <TouchableOpacity onPress={() => setSelectedVideo(item)} activeOpacity={0.9}>
+        <View style={styles.thumbnailContainer}>
+          {item.thumbnailUrl ? (
+            <Image 
+              source={{ uri: item.thumbnailUrl }} 
+              style={styles.thumbnail}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
+              <Ionicons name="play-circle" size={40} color="#fff" />
+            </View>
+          )}
+          {/* Play overlay */}
+          <View style={styles.playOverlay}>
+            <Ionicons name="play" size={24} color="#fff" />
+          </View>
+          {/* Duration badge */}
+          <View style={styles.durationBadge}>
+            <Text style={styles.durationText}>{formatDuration(item.durationSeconds)}</Text>
+          </View>
+        </View>
       </TouchableOpacity>
       <View style={styles.userInfo}>
         {item.avatarUrl ? (
@@ -143,13 +165,13 @@ const HomeScreen = () => {
 
   const renderEmpty = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="images-outline" size={80} color="#ddd" />
-      <Text style={styles.emptyTitle}>No Photos Yet</Text>
+      <Ionicons name="videocam-outline" size={80} color="#ddd" />
+      <Text style={styles.emptyTitle}>No Videos Yet</Text>
       <Text style={styles.emptyText}>
-        Be the first to upload photos!
+        Be the first to create your life journey video!
       </Text>
       <Text style={styles.emptySubtext}>
-        Go to the Upload tab to share your moments.
+        Go to the Upload tab to get started.
       </Text>
     </View>
   );
@@ -178,7 +200,7 @@ const HomeScreen = () => {
       <FlatList
         data={feedItems}
         renderItem={renderItem}
-        keyExtractor={(item) => item.imageId}
+        keyExtractor={(item) => item.videoId}
         numColumns={COLUMN_COUNT}
         contentContainerStyle={feedItems.length === 0 ? styles.emptyContent : styles.listContent}
         columnWrapperStyle={feedItems.length > 0 ? styles.row : undefined}
@@ -187,9 +209,9 @@ const HomeScreen = () => {
         onEndReached={onEndReached}
         onEndReachedThreshold={PREFETCH_THRESHOLD}
         removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
+        maxToRenderPerBatch={8}
         windowSize={5}
-        initialNumToRender={10}
+        initialNumToRender={8}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
@@ -200,30 +222,49 @@ const HomeScreen = () => {
         }
       />
 
-      {/* Full Screen Image Modal */}
+      {/* Full Screen Video Modal */}
       <Modal
-        visible={selectedImage !== null}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setSelectedImage(null)}
+        visible={selectedVideo !== null}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={() => setSelectedVideo(null)}
       >
         <View style={styles.modalContainer}>
           <TouchableOpacity 
             style={styles.closeButton} 
-            onPress={() => setSelectedImage(null)}
+            onPress={() => {
+              videoRef.current?.stopAsync();
+              setSelectedVideo(null);
+            }}
           >
             <Ionicons name="close" size={28} color="#fff" />
           </TouchableOpacity>
           
-          {selectedImage && (
+          {selectedVideo && (
             <>
-              <Image 
-                source={{ uri: selectedImage.imageUrl }} 
-                style={styles.fullScreenImage}
-                resizeMode="contain"
+              <ExpoVideo
+                ref={videoRef}
+                source={{ uri: selectedVideo.videoUrl }}
+                style={styles.fullScreenVideo}
+                resizeMode={ResizeMode.CONTAIN}
+                shouldPlay={true}
+                isLooping={true}
+                useNativeControls={true}
               />
               <View style={styles.modalUserInfo}>
-                <Text style={styles.modalUsername}>@{selectedImage.username}</Text>
+                <View style={styles.modalUserRow}>
+                  {selectedVideo.avatarUrl ? (
+                    <Image source={{ uri: selectedVideo.avatarUrl }} style={styles.modalAvatar} />
+                  ) : (
+                    <View style={styles.modalAvatarPlaceholder}>
+                      <Ionicons name="person" size={16} color="#fff" />
+                    </View>
+                  )}
+                  <Text style={styles.modalUsername}>@{selectedVideo.username}</Text>
+                </View>
+                <Text style={styles.modalDuration}>
+                  {formatDuration(selectedVideo.durationSeconds)} • Life Journey
+                </Text>
               </View>
             </>
           )}
@@ -269,15 +310,52 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   feedItem: {
-    width: IMAGE_SIZE,
+    width: ITEM_WIDTH,
     backgroundColor: '#f5f5f5',
     borderRadius: 12,
     overflow: 'hidden',
   },
-  feedImage: {
-    width: IMAGE_SIZE,
-    height: IMAGE_SIZE,
-    backgroundColor: '#eee',
+  thumbnailContainer: {
+    width: ITEM_WIDTH,
+    height: ITEM_HEIGHT,
+    backgroundColor: '#000',
+    position: 'relative',
+  },
+  thumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbnailPlaceholder: {
+    backgroundColor: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -20,
+    marginLeft: -20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  durationBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  durationText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
   },
   userInfo: {
     flexDirection: 'row',
@@ -335,7 +413,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -347,23 +425,47 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  fullScreenImage: {
+  fullScreenVideo: {
     width: width,
-    height: height * 0.8,
+    height: height * 0.7,
   },
   modalUserInfo: {
     position: 'absolute',
-    bottom: 50,
+    bottom: 80,
     left: 20,
+  },
+  modalUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  modalAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 10,
+  },
+  modalAvatarPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
   modalUsername: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  modalDuration: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 13,
   },
 });
 

@@ -77,7 +77,7 @@ const uploadToS3 = async () => {
   const filledUris = imageSlots.filter((uri): uri is string => uri !== null);
   
   if (filledUris.length < 3) {
-    Alert.alert('Not enough photos', 'You need at least 3 photos to upload.');
+    Alert.alert('Not enough photos', 'You need at least 3 photos to create your video.');
     return;
   }
 
@@ -107,8 +107,9 @@ const uploadToS3 = async () => {
 
     if (result.success) {
       Alert.alert(
-        'Upload Successful!', 
-        result.message
+        'Video Generation Started!', 
+        result.message + '\n\nYou can track progress in your Profile under "My Life Journey Videos".',
+        [{ text: 'OK' }]
       );
       // Clear the image slots after successful upload
       setImageSlots(Array(maxImages).fill(null));
@@ -125,15 +126,15 @@ const uploadToS3 = async () => {
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Upload Your Photos</Text>
+        <Text style={styles.title}>Create Your Life Journey</Text>
         
         <Text style={styles.subtitle}>
-          Tap each box to add a photo.{'\n'}
-          Share your moments with your followers!
+          Upload photos from different ages to create{"\n"}
+          a stunning morphing video of your life!
         </Text>
 
         <Text style={styles.subscriptionInfo}>
-          Current plan: <Text style={styles.bold}>{subscriptionLevel.toUpperCase()}</Text> • Max {maxImages} images
+          <Text style={styles.bold}>{subscriptionLevel.toUpperCase()}</Text> plan • {maxImages} photos = {maxImages <= 3 ? '15' : maxImages <= 6 ? '30' : '45'}s video
         </Text>
 
         <View style={styles.imageGrid}>
@@ -170,7 +171,7 @@ const uploadToS3 = async () => {
               <ActivityIndicator color="white" />
             ) : (
               <Text style={styles.createButtonText}>
-                Upload Photos
+                Create My Video
               </Text>
             )}
           </TouchableOpacity>

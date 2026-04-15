@@ -7,19 +7,27 @@ export interface IVideo extends Document {
   status: 'processing' | 'completed' | 'failed';
   finalVideoUrl?: string;
   thumbnailUrl?: string;
-  durationSeconds: number;       // 15, 30 or 60
+  durationSeconds: number;       // 15, 30 or 45
+  isPublic: boolean;             // Whether video shows on public feed
+  grokGenerationId?: string;     // Grok API generation ID for polling
+  errorMessage?: string;         // Error details if failed
   createdAt: Date;
+  completedAt?: Date;
 }
 
 const VideoSchema = new Schema<IVideo>({
   videoId: { type: String, required: true, unique: true },
-  userId: { type: String, required: true },
+  userId: { type: String, required: true, index: true },
   imageUrls: [{ type: String, required: true }],
-  status: { type: String, enum: ['processing', 'completed', 'failed'], default: 'processing' },
+  status: { type: String, enum: ['processing', 'completed', 'failed'], default: 'processing', index: true },
   finalVideoUrl: String,
   thumbnailUrl: String,
   durationSeconds: { type: Number, required: true },
-  createdAt: { type: Date, default: Date.now },
+  isPublic: { type: Boolean, default: true },
+  grokGenerationId: String,
+  errorMessage: String,
+  createdAt: { type: Date, default: Date.now, index: true },
+  completedAt: Date,
 });
 
 export const Video = model<IVideo>('Video', VideoSchema);

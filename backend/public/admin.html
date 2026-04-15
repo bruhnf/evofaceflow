@@ -427,7 +427,7 @@
             <h3 style="color: #00d4ff; margin-bottom: 15px;">Feed Configuration</h3>
             
             <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
-              <label style="color: #888; width: 200px;">Filler Image Percentage:</label>
+              <label style="color: #888; width: 200px;">Filler Video Percentage:</label>
               <input type="range" id="fillerPercent" min="0" max="100" value="30" 
                 style="flex: 1; max-width: 300px;" 
                 oninput="document.getElementById('fillerPercentValue').textContent = this.value + '%'">
@@ -435,8 +435,8 @@
               <button class="btn btn-primary" onclick="saveFillerPercent()">Save</button>
             </div>
             <p style="color: #666; font-size: 0.9rem; margin-bottom: 30px;">
-              Controls the percentage of filler images (from S3 filler/ directory) mixed into the Home feed.
-              Higher values = more filler images. Set to 0% to disable filler images entirely.
+              Controls the percentage of filler videos (from S3 videos/filler/ directory) mixed into the Home feed.
+              Higher values = more filler videos. Set to 0% to disable filler videos entirely.
             </p>
 
             <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
@@ -446,12 +446,12 @@
               <button class="btn btn-primary" onclick="saveFillerPrefix()">Save</button>
             </div>
             <p style="color: #666; font-size: 0.9rem;">
-              S3 directory prefix where filler images are stored. Upload your images to s3://evofaceflow-uploads/filler/
+              S3 directory prefix where filler videos are stored. Upload your videos to s3://evofaceflow-uploads/videos/filler/
             </p>
           </div>
 
           <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #2a2a4e;">
-            <h3 style="color: #00d4ff; margin-bottom: 15px;">Filler Image Stats</h3>
+            <h3 style="color: #00d4ff; margin-bottom: 15px;">Filler Video Stats</h3>
             <div id="fillerStats" style="color: #888;">Loading...</div>
           </div>
         </div>
@@ -850,12 +850,12 @@
 
         // Update filler stats
         document.getElementById('fillerStats').innerHTML = `
-          <p>Filler images are mixed into the feed based on the percentage above.</p>
-          <p style="margin-top: 10px;">To add filler images:</p>
+          <p>Filler videos are mixed into the feed based on the percentage above.</p>
+          <p style="margin-top: 10px;">To add filler videos:</p>
           <ol style="margin-left: 20px; margin-top: 5px;">
-            <li>Upload images to your S3 bucket at: <code style="background: #1a1a2e; padding: 2px 6px; border-radius: 3px;">s3://evofaceflow-uploads/filler/</code></li>
-            <li>Images will automatically appear in the feed</li>
-            <li>Supported formats: JPG, PNG, GIF, WebP</li>
+            <li>Upload videos to your S3 bucket at: <code style="background: #1a1a2e; padding: 2px 6px; border-radius: 3px;">s3://evofaceflow-uploads/videos/filler/</code></li>
+            <li>Videos will automatically appear in the feed</li>
+            <li>Supported formats: MP4, MOV, WebM</li>
           </ol>
         `;
       } catch (e) {

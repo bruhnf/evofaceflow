@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { Image } from '../models/Image';
+import { Video } from '../models/Video';
 import { User } from '../models/User';
 import { getSetting } from '../models/AppSettings';
 import { s3Client } from '../config/s3';
@@ -8,19 +8,19 @@ import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-// Cache filler images list (refresh every 5 minutes)
-let fillerImagesCache: string[] = [];
+// Cache filler videos list (refresh every 5 minutes)
+let fillerVideosCache: string[] = [];
 let fillerCacheTime = 0;
 const FILLER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-async function getFillerImages(): Promise<string[]> {
+async function getFillerVideos(): Promise<string[]> {
   const now = Date.now();
-  if (fillerImagesCache.length > 0 && now - fillerCacheTime < FILLER_CACHE_DURATION) {
-    return fillerImagesCache;
+  if (fillerVideosCache.length > 0 && now - fillerCacheTime < FILLER_CACHE_DURATION) {
+    return fillerVideosCache;
   }
 
   try {
-    const prefix = await getSetting('fillerS3Prefix', 'filler/');
+    const prefix = await getSetting('fillerS3Prefix', 'videos/filler/');
     const bucket = process.env.S3_BUCKET!;
     const region = process.env.AWS_REGION || 'us-east-1';
 
@@ -32,21 +32,21 @@ async function getFillerImages(): Promise<string[]> {
     const response = await s3Client.send(command);
     const contents = response.Contents || [];
 
-    // Filter to only image files
-    fillerImagesCache = contents
-      .filter(obj => obj.Key && /\.(jpg|jpeg|png|gif|webp)$/i.test(obj.Key))
+    // Filter to only video files
+    fillerVideosCache = contents
+      .filter(obj => obj.Key && /\.(mp4|mov|webm)$/i.test(obj.Key))
       .map(obj => `https://${bucket}.s3.${region}.amazonaws.com/${obj.Key}`);
 
     fillerCacheTime = now;
-    console.log(`Cached ${fillerImagesCache.length} filler images from S3`);
-    return fillerImagesCache;
+    console.log(`Cached ${fillerVideosCache.length} filler videos from S3`);
+    return fillerVideosCache;
   } catch (error) {
-    console.error('Failed to list filler images from S3:', error);
+    console.error('Failed to list filler videos from S3:', error);
     return [];
   }
 }
 
-// Get random public images for feed (mixed with filler images)
+// Get random public videos for feed (mixed with filler videos)
 router.get('/random', authenticateToken, async (req: Request, res: Response) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
@@ -56,14 +56,14 @@ router.get('/random', authenticateToken, async (req: Request, res: Response) => 
     const fillerCount = Math.round((limit * fillerPercent) / 100);
     const realCount = limit - fillerCount;
 
-    // Get random public images using aggregation
-    const images = await Image.aggregate([
-      { $match: { isPublic: true } },
+    // Get random completed public videos using aggregation
+    const videos = await Video.aggregate([
+      { $match: { isPublic: true, status: 'completed' } },
       { $sample: { size: realCount } },
     ]);
 
-    // Get user info for each image
-    const userIds = [...new Set(images.map(img => img.userId))];
+    // Get user info for each video
+    const userIds = [...new Set(videos.map(vid => vid.userId))];
     const users = await User.find({ userId: { $in: userIds } })
       .select('userId username avatarUrl');
     
@@ -72,32 +72,34 @@ router.get('/random', authenticateToken, async (req: Request, res: Response) => 
       avatarUrl: u.avatarUrl,
     }]));
 
-    // Real user images
-    const realFeedItems = images.map(img => ({
-      imageId: img.imageId,
-      imageUrl: img.imageUrl,
-      thumbnailUrl: img.thumbnailUrl,
-      userId: img.userId,
-      username: userMap.get(img.userId)?.username || 'Unknown',
-      avatarUrl: userMap.get(img.userId)?.avatarUrl,
-      createdAt: img.createdAt,
+    // Real user videos
+    const realFeedItems = videos.map(vid => ({
+      videoId: vid.videoId,
+      videoUrl: vid.finalVideoUrl,
+      thumbnailUrl: vid.thumbnailUrl,
+      durationSeconds: vid.durationSeconds,
+      userId: vid.userId,
+      username: userMap.get(vid.userId)?.username || 'Unknown',
+      avatarUrl: userMap.get(vid.userId)?.avatarUrl,
+      createdAt: vid.createdAt,
       isFiller: false,
     }));
 
-    // Get filler images
-    const allFillerImages = await getFillerImages();
+    // Get filler videos
+    const allFillerVideos = await getFillerVideos();
     const fillerFeedItems: any[] = [];
 
-    if (allFillerImages.length > 0 && fillerCount > 0) {
-      // Pick random filler images
-      const shuffled = [...allFillerImages].sort(() => Math.random() - 0.5);
+    if (allFillerVideos.length > 0 && fillerCount > 0) {
+      // Pick random filler videos
+      const shuffled = [...allFillerVideos].sort(() => Math.random() - 0.5);
       const selectedFillers = shuffled.slice(0, Math.min(fillerCount, shuffled.length));
 
-      for (const imageUrl of selectedFillers) {
+      for (const videoUrl of selectedFillers) {
         fillerFeedItems.push({
-          imageId: 'filler_' + Math.random().toString(36).substr(2, 9),
-          imageUrl,
-          thumbnailUrl: imageUrl,
+          videoId: 'filler_' + Math.random().toString(36).substr(2, 9),
+          videoUrl,
+          thumbnailUrl: videoUrl.replace('.mp4', '_thumb.jpg'), // Assume thumbnail naming
+          durationSeconds: 15,
           userId: 'anonymous',
           username: 'Anonymous User',
           avatarUrl: null,
@@ -107,7 +109,7 @@ router.get('/random', authenticateToken, async (req: Request, res: Response) => 
       }
     }
 
-    // Mix real and filler images randomly
+    // Mix real and filler videos randomly
     const allItems = [...realFeedItems, ...fillerFeedItems];
     const mixedFeed = allItems.sort(() => Math.random() - 0.5);
 
@@ -118,7 +120,7 @@ router.get('/random', authenticateToken, async (req: Request, res: Response) => 
   }
 });
 
-// Get images from followed users
+// Get videos from followed users
 router.get('/following', authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
@@ -134,10 +136,11 @@ router.get('/following', authenticateToken, async (req: Request, res: Response) 
       return res.json([]);
     }
 
-    // Get images from followed users
-    const images = await Image.find({ 
+    // Get completed videos from followed users
+    const videos = await Video.find({ 
       userId: { $in: followingIds },
-      isPublic: true 
+      isPublic: true,
+      status: 'completed',
     })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -152,14 +155,15 @@ router.get('/following', authenticateToken, async (req: Request, res: Response) 
       avatarUrl: u.avatarUrl,
     }]));
 
-    const feedItems = images.map(img => ({
-      imageId: img.imageId,
-      imageUrl: img.imageUrl,
-      thumbnailUrl: img.thumbnailUrl,
-      userId: img.userId,
-      username: userMap.get(img.userId)?.username || 'Unknown',
-      avatarUrl: userMap.get(img.userId)?.avatarUrl,
-      createdAt: img.createdAt,
+    const feedItems = videos.map(vid => ({
+      videoId: vid.videoId,
+      videoUrl: vid.finalVideoUrl,
+      thumbnailUrl: vid.thumbnailUrl,
+      durationSeconds: vid.durationSeconds,
+      userId: vid.userId,
+      username: userMap.get(vid.userId)?.username || 'Unknown',
+      avatarUrl: userMap.get(vid.userId)?.avatarUrl,
+      createdAt: vid.createdAt,
     }));
 
     res.json(feedItems);
