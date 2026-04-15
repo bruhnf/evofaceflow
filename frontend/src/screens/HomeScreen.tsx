@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, Image, TouchableOpacity, Dimensions, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -20,31 +20,63 @@ interface FeedItem {
 const { width, height } = Dimensions.get('window');
 const COLUMN_COUNT = 2;
 const IMAGE_SIZE = (width - 48) / COLUMN_COUNT; // 48 = padding (16*2) + gap (16)
+const BATCH_SIZE = 30;
+const PREFETCH_THRESHOLD = 0.5; // Start fetching when 50% from bottom
 
 const HomeScreen = () => {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedImage, setSelectedImage] = useState<FeedItem | null>(null);
+  
+  // Track seen image IDs to avoid duplicates
+  const seenImageIds = useRef<Set<string>>(new Set());
+  const isFetchingMore = useRef(false);
 
-  const fetchFeed = useCallback(async () => {
+  const fetchFeed = useCallback(async (append: boolean = false) => {
+    // Prevent concurrent fetches
+    if (append && isFetchingMore.current) return;
+    if (append) {
+      isFetchingMore.current = true;
+      setLoadingMore(true);
+    }
+
     try {
       const token = await AsyncStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/feed/random?limit=30`, {
+      const response = await fetch(`${API_BASE_URL}/api/feed/random?limit=${BATCH_SIZE}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
       
       if (response.ok) {
-        const data = await response.json();
-        setFeedItems(data);
+        const data: FeedItem[] = await response.json();
+        
+        // Prefetch images in background for smoother scrolling
+        data.forEach(item => {
+          Image.prefetch(item.imageUrl).catch(() => {});
+          if (item.avatarUrl) Image.prefetch(item.avatarUrl).catch(() => {});
+        });
+        
+        if (append) {
+          // Filter out duplicates before appending
+          const newItems = data.filter(item => !seenImageIds.current.has(item.imageId));
+          newItems.forEach(item => seenImageIds.current.add(item.imageId));
+          setFeedItems(prev => [...prev, ...newItems]);
+        } else {
+          // Fresh fetch - reset seen IDs
+          seenImageIds.current = new Set(data.map(item => item.imageId));
+          setFeedItems(data);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch feed:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
+      isFetchingMore.current = false;
     }
   }, []);
 
@@ -52,17 +84,40 @@ const HomeScreen = () => {
     fetchFeed();
   }, [fetchFeed]);
 
-  // Refresh feed when screen comes into focus
+  // Only refresh on first focus, not every focus (to preserve scroll position)
+  const hasFocused = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      fetchFeed();
+      if (!hasFocused.current) {
+        hasFocused.current = true;
+        return;
+      }
+      // Optional: uncomment below to refresh on every focus
+      // fetchFeed();
     }, [fetchFeed])
   );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchFeed();
+    fetchFeed(false); // Fresh fetch, not append
   }, [fetchFeed]);
+
+  // Pre-fetch more images when user scrolls near the bottom
+  const onEndReached = useCallback(() => {
+    if (!loadingMore && !refreshing) {
+      fetchFeed(true); // Append mode
+    }
+  }, [fetchFeed, loadingMore, refreshing]);
+
+  // Footer loading indicator
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color="#666" />
+      </View>
+    );
+  };
 
   const renderItem = ({ item }: { item: FeedItem }) => (
     <View style={styles.feedItem}>
@@ -128,6 +183,13 @@ const HomeScreen = () => {
         contentContainerStyle={feedItems.length === 0 ? styles.emptyContent : styles.listContent}
         columnWrapperStyle={feedItems.length > 0 ? styles.row : undefined}
         ListEmptyComponent={renderEmpty}
+        ListFooterComponent={renderFooter}
+        onEndReached={onEndReached}
+        onEndReachedThreshold={PREFETCH_THRESHOLD}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        initialNumToRender={10}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
@@ -197,6 +259,10 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
   row: {
     justifyContent: 'space-between',
