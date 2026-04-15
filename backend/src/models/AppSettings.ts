@@ -35,7 +35,7 @@ export async function setSetting<T>(key: string, value: T, description?: string)
 export async function initializeSettings(): Promise<void> {
   const defaults = [
     { key: 'fillerImagePercent', value: 30, description: 'Percentage of filler images to mix into feed (0-100)' },
-    { key: 'fillerS3Prefix', value: 'filler/', description: 'S3 prefix for filler images' },
+    { key: 'fillerS3Prefix', value: 'images/filler/', description: 'S3 prefix for filler images' },
   ];
 
   for (const setting of defaults) {
