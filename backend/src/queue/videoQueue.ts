@@ -24,59 +24,53 @@ const worker = new Worker('video-generation', async (job) => {
   console.log(`🎬 Starting video generation for ${videoId} (${imageUrls.length} images, ${durationSeconds}s)`);
 
   try {
-    // Call Grok Imagine API
+    // Call xAI Grok Imagine Video API
     const grokResponse = await generateVideo({
       images: imageUrls,
       duration: durationSeconds,
-      style: 'morph',
     });
 
-    console.log(`Grok API response:`, grokResponse);
+    console.log(`Grok API initial response:`, grokResponse);
 
-    // If the API returns a completed video immediately
-    if (grokResponse.status === 'completed' && grokResponse.video_url) {
-      await handleCompletedVideo(videoId, userId, grokResponse.video_url, grokResponse.thumbnail_url, imageUrls);
-      return { success: true, videoId };
+    // xAI returns request_id for async polling
+    if (!grokResponse.request_id) {
+      throw new Error('No request_id returned from Grok API');
     }
 
-    // If the API returns a pending/processing status, we need to poll
-    if (grokResponse.id && (grokResponse.status === 'pending' || grokResponse.status === 'processing')) {
-      // Save generation ID for tracking
-      await Video.findOneAndUpdate(
-        { videoId },
-        { grokGenerationId: grokResponse.id }
-      );
+    // Save request_id for tracking
+    await Video.findOneAndUpdate(
+      { videoId },
+      { grokGenerationId: grokResponse.request_id }
+    );
 
-      // Poll for completion
-      let pollCount = 0;
-      while (pollCount < MAX_POLL_ATTEMPTS) {
-        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
-        pollCount++;
+    // Poll for completion
+    let pollCount = 0;
+    while (pollCount < MAX_POLL_ATTEMPTS) {
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+      pollCount++;
 
-        console.log(`Polling Grok API for ${videoId} (attempt ${pollCount}/${MAX_POLL_ATTEMPTS})...`);
-        
-        const statusResponse = await checkVideoStatus(grokResponse.id);
-        
-        if (statusResponse.status === 'completed' && statusResponse.video_url) {
-          await handleCompletedVideo(videoId, userId, statusResponse.video_url, statusResponse.thumbnail_url, imageUrls);
-          return { success: true, videoId };
-        }
-
-        if (statusResponse.status === 'failed') {
-          throw new Error(statusResponse.error || 'Video generation failed on Grok API');
-        }
+      console.log(`Polling xAI API for ${videoId} (attempt ${pollCount}/${MAX_POLL_ATTEMPTS})...`);
+      
+      const statusResponse = await checkVideoStatus(grokResponse.request_id);
+      
+      // xAI uses status: "done" when complete
+      if (statusResponse.status === 'done' && statusResponse.video?.url) {
+        await handleCompletedVideo(videoId, userId, statusResponse.video.url, undefined, imageUrls);
+        return { success: true, videoId };
       }
 
-      // Timeout
-      throw new Error('Video generation timed out');
+      if (statusResponse.status === 'failed') {
+        throw new Error(statusResponse.error || 'Video generation failed on xAI API');
+      }
+
+      // Log progress
+      if (statusResponse.progress !== undefined) {
+        console.log(`Progress: ${statusResponse.progress}%`);
+      }
     }
 
-    // If we got an error or unexpected status
-    if (grokResponse.status === 'failed' || grokResponse.error) {
-      throw new Error(grokResponse.error || 'Video generation failed');
-    }
-
-    throw new Error(`Unexpected Grok API response status: ${grokResponse.status}`);
+    // Timeout after MAX_POLL_ATTEMPTS
+    throw new Error('Video generation timed out after 5 minutes');
   } catch (error: any) {
     console.error(`❌ Video generation failed for ${videoId}:`, error.message);
     
@@ -96,7 +90,7 @@ const worker = new Worker('video-generation', async (job) => {
 });
 
 /**
- * Handle a completed video from Grok API
+ * Handle a completed video from xAI API
  */
 async function handleCompletedVideo(
   videoId: string,
@@ -105,7 +99,7 @@ async function handleCompletedVideo(
   thumbnailUrl: string | undefined,
   imageUrls: string[]
 ): Promise<void> {
-  console.log(`✅ Video ${videoId} completed, downloading from Grok...`);
+  console.log(`✅ Video ${videoId} completed, downloading from xAI...`);
 
   // Download video and upload to our S3
   const { videoKey, thumbnailKey } = await downloadAndUploadVideo(videoUrl, userId, videoId);
