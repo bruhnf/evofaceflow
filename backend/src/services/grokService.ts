@@ -112,6 +112,9 @@ export async function generateVideo(request: GrokVideoRequest): Promise<GrokVide
     console.log('Model:', requestBody.model);
     console.log('Prompt:', prompt);
     console.log('Reference Images:', referenceImageUrls.length);
+    referenceImageUrls.forEach((url, i) => {
+      console.log(`  Image ${i + 1}: ${url.substring(0, 50)}... (${url.length} chars)`);
+    });
     console.log('Duration:', duration);
     console.log('Aspect Ratio:', requestBody.aspect_ratio);
     console.log('Resolution:', requestBody.resolution);
