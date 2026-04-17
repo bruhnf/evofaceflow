@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, ActivityIndicator, TextInput } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,20 +11,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const UploadScreen = () => {
   const { subscriptionLevel, userId } = useUserStore();
   
-  const maxImages = subscriptionLevel === 'advanced' ? 9 : 
-                   subscriptionLevel === 'intermediate' ? 6 : 3;
+  const maxImages = subscriptionLevel === 'premium' ? 6 : 
+                   subscriptionLevel === 'pro' ? 4 : 2;
 
   const [imageSlots, setImageSlots] = useState<(string | null)[]>(Array(maxImages).fill(null));
+  const [prompt, setPrompt] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
-  // Resize image to max 1024px on longest side while keeping aspect ratio
+  // Resize image to max 720px on longest side while keeping aspect ratio
   const resizeImage = async (uri: string): Promise<string> => {
     // Get image dimensions
     const { width, height } = await new Promise<{ width: number; height: number }>((resolve) => {
       Image.getSize(uri, (w, h) => resolve({ width: w, height: h }));
     });
 
-    const maxDimension = 1024;
+    const maxDimension = 720;
     
     // Only resize if needed
     if (width <= maxDimension && height <= maxDimension) {
@@ -76,8 +77,13 @@ const UploadScreen = () => {
 const uploadToS3 = async () => {
   const filledUris = imageSlots.filter((uri): uri is string => uri !== null);
   
-  if (filledUris.length < 3) {
-    Alert.alert('Not enough photos', 'You need at least 3 photos to create your video.');
+  if (filledUris.length < 2) {
+    Alert.alert('Not enough photos', 'You need at least 2 photos to create your video.');
+    return;
+  }
+
+  if (!prompt.trim()) {
+    Alert.alert('Prompt required', 'Please describe how you want your video to look.');
     return;
   }
 
@@ -87,6 +93,8 @@ const uploadToS3 = async () => {
     const token = await AsyncStorage.getItem('token');
 
     const formData = new FormData();
+    formData.append('prompt', prompt.trim());
+    
     for (let i = 0; i < filledUris.length; i++) {
       // Resize image before upload for faster transfers
       const resizedUri = await resizeImage(filledUris[i]);
@@ -111,8 +119,9 @@ const uploadToS3 = async () => {
         result.message + '\n\nYou can track progress in your Profile under "My Life Journey Videos".',
         [{ text: 'OK' }]
       );
-      // Clear the image slots after successful upload
+      // Clear the image slots and prompt after successful upload
       setImageSlots(Array(maxImages).fill(null));
+      setPrompt('');
     } else {
       Alert.alert('Upload Failed', result.message);
     }
@@ -134,7 +143,7 @@ const uploadToS3 = async () => {
         </Text>
 
         <Text style={styles.subscriptionInfo}>
-          <Text style={styles.bold}>{subscriptionLevel.toUpperCase()}</Text> plan • {maxImages} photos = {maxImages <= 3 ? '15' : maxImages <= 6 ? '30' : '45'}s video
+          <Text style={styles.bold}>{subscriptionLevel.toUpperCase()}</Text> plan • {maxImages} photos = {maxImages <= 2 ? '10' : maxImages <= 4 ? '20' : '30'}s video
         </Text>
 
         <View style={styles.imageGrid}>
@@ -161,7 +170,22 @@ const uploadToS3 = async () => {
           ))}
         </View>
 
-        {imageSlots.filter(slot => slot !== null).length >= 3 && (
+        <View style={styles.promptContainer}>
+          <Text style={styles.promptLabel}>Describe your video</Text>
+          <TextInput
+            style={styles.promptInput}
+            placeholder="E.g., Create a smooth cinematic video showing my life journey with gentle transitions..."
+            placeholderTextColor="#999"
+            value={prompt}
+            onChangeText={setPrompt}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+            editable={!isUploading}
+          />
+        </View>
+
+        {imageSlots.filter(slot => slot !== null).length >= 2 && (
           <TouchableOpacity 
             style={[styles.createButton, isUploading && styles.disabledButton]} 
             onPress={uploadToS3}
@@ -189,7 +213,7 @@ const styles = StyleSheet.create({
   subtitle: { textAlign: 'center', color: '#444', fontSize: 15, lineHeight: 22, marginBottom: 20 },
   subscriptionInfo: { fontSize: 15, color: '#666', marginBottom: 30 },
   bold: { fontWeight: '700', color: '#000' },
-  imageGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16, marginBottom: 40 },
+  imageGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16, marginBottom: 25 },
   slotContainer: { width: 110, alignItems: 'center' },
   filledSlot: { alignItems: 'center' },
   imagePreview: { width: 100, height: 100, borderRadius: 12, borderWidth: 2, borderColor: '#000' },
@@ -207,6 +231,26 @@ const styles = StyleSheet.create({
   },
   addText: { marginTop: 8, fontSize: 16, color: '#999', fontWeight: '600' },
   slotLabel: { marginTop: 4, fontSize: 12, color: '#bbb' },
+  promptContainer: {
+    width: '100%',
+    marginBottom: 30,
+  },
+  promptLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+  },
+  promptInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 12,
+    padding: 15,
+    fontSize: 15,
+    minHeight: 100,
+    backgroundColor: '#fafafa',
+    color: '#333',
+  },
   createButton: {
     backgroundColor: '#000',
     paddingVertical: 18,

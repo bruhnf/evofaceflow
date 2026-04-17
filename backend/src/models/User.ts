@@ -6,7 +6,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   verified: boolean;
-  subscriptionLevel: 'beginner' | 'intermediate' | 'advanced';
+  subscriptionLevel: 'basic' | 'pro' | 'premium';
   bio?: string;
   avatarUrl?: string;
   followingCount: number;
@@ -26,8 +26,8 @@ const UserSchema = new Schema<IUser>({
   verified: { type: Boolean, default: false },
   subscriptionLevel: { 
     type: String, 
-    enum: ['beginner', 'intermediate', 'advanced'], 
-    default: 'beginner' 
+    enum: ['basic', 'pro', 'premium'], 
+    default: 'basic' 
   },
   bio: { type: String, default: '' },
   avatarUrl: { type: String, default: '' },

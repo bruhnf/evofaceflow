@@ -312,9 +312,9 @@
           <h2>Subscription Breakdown</h2>
           <table>
             <tr><th>Level</th><th>Count</th></tr>
-            <tr><td>Beginner (3 images)</td><td id="beginnerCount">-</td></tr>
-            <tr><td>Intermediate (6 images)</td><td id="intermediateCount">-</td></tr>
-            <tr><td>Advanced (9 images)</td><td id="advancedCount">-</td></tr>
+            <tr><td>Basic (2 images, 10s video)</td><td id="basicCount">-</td></tr>
+            <tr><td>Pro (4 images, 20s video)</td><td id="proCount">-</td></tr>
+            <tr><td>Premium (6 images, 30s video)</td><td id="premiumCount">-</td></tr>
           </table>
         </div>
       </div>
@@ -328,9 +328,9 @@
             <input type="email" id="newEmail" placeholder="Email">
             <input type="password" id="newPassword" placeholder="Password">
             <select id="newSubscription">
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
+              <option value="basic">Basic</option>
+              <option value="pro">Pro</option>
+              <option value="premium">Premium</option>
             </select>
             <button class="btn btn-success" onclick="createUser()">Create User</button>
           </div>
@@ -528,9 +528,9 @@
         document.getElementById('usersWithImages').textContent = data.usersWithImages;
         document.getElementById('newUsersToday').textContent = data.newUsersToday;
         document.getElementById('newImagesThisWeek').textContent = data.newImagesThisWeek;
-        document.getElementById('beginnerCount').textContent = data.subscriptionBreakdown.beginner;
-        document.getElementById('intermediateCount').textContent = data.subscriptionBreakdown.intermediate;
-        document.getElementById('advancedCount').textContent = data.subscriptionBreakdown.advanced;
+        document.getElementById('basicCount').textContent = data.subscriptionBreakdown.basic;
+        document.getElementById('proCount').textContent = data.subscriptionBreakdown.pro;
+        document.getElementById('premiumCount').textContent = data.subscriptionBreakdown.premium;
       } catch (e) {
         console.error('Failed to load stats', e);
       }
@@ -550,9 +550,9 @@
             <td>${u.email}</td>
             <td>
               <select onchange="updateSubscription('${u.userId}', this.value)">
-                <option value="beginner" ${u.subscriptionLevel === 'beginner' ? 'selected' : ''}>Beginner</option>
-                <option value="intermediate" ${u.subscriptionLevel === 'intermediate' ? 'selected' : ''}>Intermediate</option>
-                <option value="advanced" ${u.subscriptionLevel === 'advanced' ? 'selected' : ''}>Advanced</option>
+                <option value="basic" ${u.subscriptionLevel === 'basic' ? 'selected' : ''}>Basic</option>
+                <option value="pro" ${u.subscriptionLevel === 'pro' ? 'selected' : ''}>Pro</option>
+                <option value="premium" ${u.subscriptionLevel === 'premium' ? 'selected' : ''}>Premium</option>
               </select>
             </td>
             <td>${u.imageCount}</td>

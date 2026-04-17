@@ -5,7 +5,7 @@ import { API_BASE_URL } from '../config/api';
 interface UserState {
   userId: string | null;
   username: string | null;
-  subscriptionLevel: 'beginner' | 'intermediate' | 'advanced';
+  subscriptionLevel: 'basic' | 'pro' | 'premium';
   verified: boolean;
   bio?: string;
   avatarUrl?: string;
@@ -22,7 +22,7 @@ interface UserState {
 export const useUserStore = create<UserState>((set, get) => ({
   userId: null,
   username: null,
-  subscriptionLevel: 'beginner',
+  subscriptionLevel: 'basic',
   verified: false,
   bio: '',
   avatarUrl: undefined,
@@ -37,7 +37,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ 
       userId: null, 
       username: null, 
-      subscriptionLevel: 'beginner',
+      subscriptionLevel: 'basic',
       verified: false,
       bio: '',
       avatarUrl: undefined,

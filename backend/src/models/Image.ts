@@ -16,8 +16,8 @@ const ImageSchema = new Schema<IImage>({
   userId: { type: String, required: true, index: true },
   imageUrl: { type: String, required: true },
   thumbnailUrl: { type: String },
-  width: { type: Number, default: 1024 },
-  height: { type: Number, default: 1024 },
+  width: { type: Number, default: 720 },
+  height: { type: Number, default: 720 },
   isPublic: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
 });

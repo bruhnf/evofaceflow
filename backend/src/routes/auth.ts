@@ -61,7 +61,7 @@ router.post('/signup', signupValidation, async (req: Request, res: Response) => 
       email,
       password: hashedPassword,
       verified: false,
-      subscriptionLevel: 'beginner',   // default
+      subscriptionLevel: 'basic',   // default
     });
 
     await newUser.save();

@@ -3,6 +3,9 @@
 # Use official lightweight Node.js image (Alpine is small and fast)
 FROM node:20-alpine
 
+# Install ffmpeg for video stitching
+RUN apk add --no-cache ffmpeg
+
 # Set working directory inside the container
 WORKDIR /app
 

@@ -32,9 +32,9 @@ router.get('/stats', authenticateAdmin, async (req: Request, res: Response) => {
     const usersWithVideos = await Video.distinct('userId');
 
     // Subscription breakdown
-    const beginnerCount = await User.countDocuments({ subscriptionLevel: 'beginner' });
-    const intermediateCount = await User.countDocuments({ subscriptionLevel: 'intermediate' });
-    const advancedCount = await User.countDocuments({ subscriptionLevel: 'advanced' });
+    const basicCount = await User.countDocuments({ subscriptionLevel: 'basic' });
+    const proCount = await User.countDocuments({ subscriptionLevel: 'pro' });
+    const premiumCount = await User.countDocuments({ subscriptionLevel: 'premium' });
 
     res.json({
       totalUsers,
@@ -47,9 +47,9 @@ router.get('/stats', authenticateAdmin, async (req: Request, res: Response) => {
       usersWithImages: usersWithImages.length,
       usersWithVideos: usersWithVideos.length,
       subscriptionBreakdown: {
-        beginner: beginnerCount,
-        intermediate: intermediateCount,
-        advanced: advancedCount,
+        basic: basicCount,
+        pro: proCount,
+        premium: premiumCount,
       },
       timestamp: new Date().toISOString()
     });
@@ -162,7 +162,7 @@ router.post('/users/create', authenticateAdmin, async (req: Request, res: Respon
       email,
       password: hashedPassword,
       verified: true, // Auto-verify test users
-      subscriptionLevel: subscriptionLevel || 'beginner',
+      subscriptionLevel: subscriptionLevel || 'basic',
     });
 
     await newUser.save();
@@ -212,7 +212,7 @@ router.put('/users/:userId/subscription', authenticateAdmin, async (req: Request
     const { userId } = req.params;
     const { subscriptionLevel } = req.body;
 
-    if (!['beginner', 'intermediate', 'advanced'].includes(subscriptionLevel)) {
+    if (!['basic', 'pro', 'premium'].includes(subscriptionLevel)) {
       return res.status(400).json({ message: 'Invalid subscription level' });
     }
 

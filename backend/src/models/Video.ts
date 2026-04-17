@@ -4,10 +4,11 @@ export interface IVideo extends Document {
   videoId: string;
   userId: string;
   imageUrls: string[];           // ordered S3 urls from slots
+  prompt: string;                // User-provided prompt for video generation
   status: 'processing' | 'completed' | 'failed';
   finalVideoUrl?: string;
   thumbnailUrl?: string;
-  durationSeconds: number;       // 15, 30 or 45
+  durationSeconds: number;       // 10 (basic), 20 (pro), 30 (premium) - capped at 10 for reference images API
   isPublic: boolean;             // Whether video shows on public feed
   grokGenerationId?: string;     // Grok API generation ID for polling
   errorMessage?: string;         // Error details if failed
@@ -19,6 +20,7 @@ const VideoSchema = new Schema<IVideo>({
   videoId: { type: String, required: true, unique: true },
   userId: { type: String, required: true, index: true },
   imageUrls: [{ type: String, required: true }],
+  prompt: { type: String, required: true },
   status: { type: String, enum: ['processing', 'completed', 'failed'], default: 'processing', index: true },
   finalVideoUrl: String,
   thumbnailUrl: String,

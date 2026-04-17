@@ -22,13 +22,18 @@ const upload = multer({
 });
 
 // Upload images and start video generation
-router.post('/images', authenticateToken, upload.array('images', 9), async (req, res) => {
+router.post('/images', authenticateToken, upload.array('images', 6), async (req, res) => {
   try {
     const userId = (req as any).user.userId;
     const files = req.files as Express.Multer.File[];
+    const prompt = req.body.prompt;
 
-    if (!files || files.length < 3) {
-      return res.status(400).json({ message: 'At least 3 images required' });
+    if (!files || files.length < 2) {
+      return res.status(400).json({ message: 'At least 2 images required' });
+    }
+
+    if (!prompt || prompt.trim().length === 0) {
+      return res.status(400).json({ message: 'A prompt is required to generate your video' });
     }
 
     const videoId = 'vid_' + uuidv4();
@@ -55,14 +60,16 @@ router.post('/images', authenticateToken, upload.array('images', 9), async (req,
     }
 
     // Calculate duration based on number of images
-    // 3 images = 15s, 6 images = 30s, 9 images = 45s
-    const durationSeconds = files.length <= 3 ? 15 : files.length <= 6 ? 30 : 45;
+    // Each pair of images generates a 10s segment, segments are stitched together:
+    // Basic (2 images): 1 segment = 10s | Pro (4 images): 2 segments = 20s | Premium (6 images): 3 segments = 30s
+    const durationSeconds = files.length <= 2 ? 10 : files.length <= 4 ? 20 : 30;
 
     // Create Video record with processing status
     const newVideo = new Video({
       videoId,
       userId,
       imageUrls: uploadedImageUrls,
+      prompt: prompt.trim(),
       status: 'processing',
       durationSeconds,
       isPublic: true,
@@ -75,6 +82,7 @@ router.post('/images', authenticateToken, upload.array('images', 9), async (req,
       videoId,
       userId,
       imageUrls: uploadedImageUrls,
+      prompt: prompt.trim(),
       durationSeconds,
     }, {
       attempts: 3,
@@ -84,7 +92,7 @@ router.post('/images', authenticateToken, upload.array('images', 9), async (req,
       },
     });
 
-    console.log(`🎬 Queued video generation: ${videoId} with ${files.length} images`);
+    console.log(`🎬 Queued video generation: ${videoId} with ${files.length} images and prompt`);
 
     res.json({ 
       success: true,

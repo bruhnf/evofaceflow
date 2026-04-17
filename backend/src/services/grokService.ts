@@ -1,6 +1,13 @@
 import axios from 'axios';
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client } from '../config/s3';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
+const execAsync = promisify(exec);
 
 const GROK_VIDEO_API_URL = 'https://api.x.ai/v1/videos/generations';
 const GROK_VIDEO_STATUS_URL = 'https://api.x.ai/v1/videos';
@@ -15,9 +22,9 @@ function getGrokApiKey(): string {
 }
 
 interface GrokVideoRequest {
-  images: string[]; // Array of image URLs
-  duration?: number; // Target duration in seconds
-  prompt?: string;   // Optional custom prompt
+  images: string[]; // Array of image URLs (used as reference images)
+  duration?: number; // Target duration in seconds (max 10s for reference images)
+  prompt: string;    // Required prompt for reference images API
 }
 
 interface GrokVideoResponse {
@@ -66,30 +73,35 @@ async function getImageAsDataUrl(imageUrl: string): Promise<string> {
 
 /**
  * Submit video generation request to xAI Grok Imagine Video API
- * Note: xAI's API generates video from prompt + optional single image
- * For morphing multiple images, we use the first image with a descriptive prompt
+ * Using "Generate Videos using Reference Images" API
+ * Reference images influence what appears in the video without locking the first frame
+ * Note: Max 7 reference images, max 10 seconds duration for reference images
  */
 export async function generateVideo(request: GrokVideoRequest): Promise<GrokVideoResponse> {
   const apiKey = getGrokApiKey();
 
   try {
-    // Get the first image as the starting point
-    console.log(`Converting first image to data URL for xAI API...`);
-    const imageDataUrl = await getImageAsDataUrl(request.images[0]);
+    // Convert all images to data URLs for reference_image_urls
+    console.log(`Converting ${request.images.length} images to data URLs for xAI API...`);
+    const referenceImageUrls: string[] = [];
+    for (const imageUrl of request.images) {
+      const dataUrl = await getImageAsDataUrl(imageUrl);
+      referenceImageUrls.push(dataUrl);
+    }
 
-    // Generate a prompt for life journey video
-    const prompt = request.prompt || 
-      `Create a smooth, cinematic video showing the progression of time and aging. ` +
-      `Start from this person's current appearance and create a beautiful, ` +
-      `artistic visualization of their life journey spanning ${request.duration || 15} seconds. ` +
-      `Use smooth transitions and subtle morphing effects.`;
+    // API requires prompt for reference images
+    const prompt = request.prompt;
+
+    // Max duration for reference images is 10 seconds per API docs
+    const duration = Math.min(request.duration || 10, 10);
 
     const requestBody = {
       model: 'grok-imagine-video',
       prompt: prompt,
-      image: {
-        url: imageDataUrl,
-      },
+      reference_image_urls: referenceImageUrls,
+      duration: duration,
+      aspect_ratio: '9:16',
+      resolution: '720p',
     };
 
     // Log request details
@@ -98,7 +110,10 @@ export async function generateVideo(request: GrokVideoRequest): Promise<GrokVide
     console.log('Method: POST');
     console.log('Model:', requestBody.model);
     console.log('Prompt:', prompt);
-    console.log('Image: [data URL provided]');
+    console.log('Reference Images:', referenceImageUrls.length);
+    console.log('Duration:', duration);
+    console.log('Aspect Ratio:', requestBody.aspect_ratio);
+    console.log('Resolution:', requestBody.resolution);
     console.log('=======================================');
     
     const response = await axios.post(
@@ -226,4 +241,115 @@ export function getS3Url(key: string): string {
   const bucket = process.env.S3_BUCKET!;
   const region = process.env.AWS_REGION || 'us-east-1';
   return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+}
+
+/**
+ * Download a video from URL to a local temp file
+ */
+export async function downloadVideoToFile(videoUrl: string, filePath: string): Promise<void> {
+  console.log(`Downloading video to: ${filePath}`);
+  const response = await axios.get(videoUrl, { responseType: 'arraybuffer' });
+  fs.writeFileSync(filePath, Buffer.from(response.data));
+}
+
+/**
+ * Stitch multiple video files together using ffmpeg
+ * Returns the path to the stitched video file
+ */
+export async function stitchVideos(videoPaths: string[], outputPath: string): Promise<void> {
+  if (videoPaths.length === 0) {
+    throw new Error('No videos to stitch');
+  }
+
+  if (videoPaths.length === 1) {
+    // Just copy the single video
+    fs.copyFileSync(videoPaths[0], outputPath);
+    return;
+  }
+
+  console.log(`🎬 Stitching ${videoPaths.length} videos together...`);
+
+  // Create a concat file for ffmpeg
+  const tempDir = path.dirname(outputPath);
+  const concatFilePath = path.join(tempDir, 'concat.txt');
+  
+  // Write the concat file with proper escaping
+  const concatContent = videoPaths
+    .map(p => `file '${p.replace(/'/g, "'\\''")}'`)
+    .join('\n');
+  fs.writeFileSync(concatFilePath, concatContent);
+
+  try {
+    // Use ffmpeg concat demuxer for seamless stitching
+    const ffmpegCommand = `ffmpeg -y -f concat -safe 0 -i "${concatFilePath}" -c copy "${outputPath}"`;
+    console.log(`Running: ${ffmpegCommand}`);
+    
+    const { stdout, stderr } = await execAsync(ffmpegCommand);
+    if (stderr) {
+      console.log('ffmpeg stderr:', stderr);
+    }
+    
+    console.log(`✅ Videos stitched successfully: ${outputPath}`);
+  } finally {
+    // Clean up concat file
+    if (fs.existsSync(concatFilePath)) {
+      fs.unlinkSync(concatFilePath);
+    }
+  }
+}
+
+/**
+ * Upload a local video file to S3
+ */
+export async function uploadVideoToS3(
+  localPath: string,
+  userId: string,
+  videoId: string
+): Promise<{ videoKey: string; thumbnailKey: string }> {
+  const bucket = process.env.S3_BUCKET!;
+
+  const videoBuffer = fs.readFileSync(localPath);
+  const videoKey = `videos/${userId}/${videoId}.mp4`;
+  
+  await s3Client.send(new PutObjectCommand({
+    Bucket: bucket,
+    Key: videoKey,
+    Body: videoBuffer,
+    ContentType: 'video/mp4',
+  }));
+
+  console.log(`Video uploaded to S3: ${videoKey}`);
+
+  const thumbnailKey = `thumbnails/${userId}/${videoId}.jpg`;
+  
+  return {
+    videoKey,
+    thumbnailKey,
+  };
+}
+
+/**
+ * Clean up temporary files
+ */
+export function cleanupTempFiles(filePaths: string[]): void {
+  for (const filePath of filePaths) {
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (error) {
+      console.error(`Failed to cleanup temp file ${filePath}:`, error);
+    }
+  }
+}
+
+/**
+ * Get a temp directory path for video processing
+ */
+export function getTempDir(): string {
+  const tempDir = path.join(os.tmpdir(), 'evofaceflow-videos');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+  return tempDir;
 }
