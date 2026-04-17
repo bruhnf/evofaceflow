@@ -52,25 +52,16 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate limiting
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // 1000 requests per window (increased for video polling)
-  message: { message: 'Too many requests, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => req.path.startsWith('/api/upload'), // Skip for uploads (handled by nginx)
-});
-
+// Rate limiting - only for auth endpoints (nginx handles general rate limiting)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 auth attempts per window
+  max: 50, // 50 auth attempts per window (increased for testing)
   message: { message: 'Too many login attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-app.use(generalLimiter);
+// Only apply rate limiting to sensitive auth endpoints
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 
