@@ -16,6 +16,7 @@ const UploadScreen = () => {
 
   const [imageSlots, setImageSlots] = useState<(string | null)[]>(Array(maxImages).fill(null));
   const [prompt, setPrompt] = useState('');
+  const [resolution, setResolution] = useState<'480p' | '720p'>('720p');
   const [isUploading, setIsUploading] = useState(false);
   const [showImagePicker, setShowImagePicker] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -138,6 +139,7 @@ const uploadToS3 = async () => {
 
     const formData = new FormData();
     formData.append('prompt', prompt.trim());
+    formData.append('resolution', resolution);
     
     for (let i = 0; i < filledUris.length; i++) {
       // Resize image before upload for faster transfers
@@ -252,6 +254,29 @@ const uploadToS3 = async () => {
           </View>
         </View>
 
+        {/* Resolution Toggle */}
+        <View style={styles.resolutionContainer}>
+          <Text style={styles.resolutionLabel}>Video Quality</Text>
+          <View style={styles.resolutionToggle}>
+            <TouchableOpacity
+              style={[styles.resolutionOption, resolution === '480p' && styles.resolutionSelected]}
+              onPress={() => setResolution('480p')}
+              disabled={isUploading}
+            >
+              <Text style={[styles.resolutionText, resolution === '480p' && styles.resolutionTextSelected]}>480p</Text>
+              <Text style={[styles.resolutionSubtext, resolution === '480p' && styles.resolutionTextSelected]}>Faster</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.resolutionOption, resolution === '720p' && styles.resolutionSelected]}
+              onPress={() => setResolution('720p')}
+              disabled={isUploading}
+            >
+              <Text style={[styles.resolutionText, resolution === '720p' && styles.resolutionTextSelected]}>720p</Text>
+              <Text style={[styles.resolutionSubtext, resolution === '720p' && styles.resolutionTextSelected]}>HD</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {imageSlots.filter(slot => slot !== null).length >= 2 && (
           <TouchableOpacity 
             style={[styles.createButton, isUploading && styles.disabledButton]} 
@@ -361,6 +386,45 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#333',
+  },
+  resolutionContainer: {
+    width: '100%',
+    marginBottom: 25,
+    alignItems: 'center',
+  },
+  resolutionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 10,
+  },
+  resolutionToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 25,
+    padding: 4,
+  },
+  resolutionOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 25,
+    borderRadius: 22,
+    alignItems: 'center',
+  },
+  resolutionSelected: {
+    backgroundColor: '#000',
+  },
+  resolutionText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#666',
+  },
+  resolutionTextSelected: {
+    color: '#fff',
+  },
+  resolutionSubtext: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 2,
   },
   createButton: {
     backgroundColor: '#000',

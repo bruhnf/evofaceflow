@@ -25,6 +25,7 @@ interface GrokVideoRequest {
   images: string[]; // Array of image URLs (used as reference images)
   duration?: number; // Target duration in seconds (max 10s for reference images)
   prompt: string;    // Required prompt for reference images API
+  resolution?: '480p' | '720p'; // Video resolution
 }
 
 interface GrokVideoResponse {
@@ -95,6 +96,7 @@ export async function generateVideo(request: GrokVideoRequest): Promise<GrokVide
 
     // Max duration for reference images is 10 seconds per API docs
     const duration = Math.min(request.duration || 10, 10);
+    const resolution = request.resolution || '720p';
 
     const requestBody = {
       model: 'grok-imagine-video',
@@ -102,7 +104,7 @@ export async function generateVideo(request: GrokVideoRequest): Promise<GrokVide
       reference_images: referenceImages,
       duration: duration,
       aspect_ratio: '9:16',
-      resolution: '720p',
+      resolution: resolution,
     };
 
     // Log request details

@@ -27,6 +27,7 @@ router.post('/images', authenticateToken, upload.array('images', 6), async (req,
     const userId = (req as any).user.userId;
     const files = req.files as Express.Multer.File[];
     const prompt = req.body.prompt;
+    const resolution = req.body.resolution === '480p' ? '480p' : '720p'; // Default to 720p
 
     if (!files || files.length < 2) {
       return res.status(400).json({ message: 'At least 2 images required' });
@@ -70,6 +71,7 @@ router.post('/images', authenticateToken, upload.array('images', 6), async (req,
       userId,
       imageUrls: uploadedImageUrls,
       prompt: prompt.trim(),
+      resolution,
       status: 'processing',
       durationSeconds,
       isPublic: true,
@@ -83,6 +85,7 @@ router.post('/images', authenticateToken, upload.array('images', 6), async (req,
       userId,
       imageUrls: uploadedImageUrls,
       prompt: prompt.trim(),
+      resolution,
       durationSeconds,
     }, {
       attempts: 3,

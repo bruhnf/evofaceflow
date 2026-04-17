@@ -52,9 +52,10 @@ async function generateAndPollSegment(
   segmentImages: string[],
   prompt: string,
   segmentIndex: number,
-  totalSegments: number
+  totalSegments: number,
+  resolution: '480p' | '720p' = '720p'
 ): Promise<string> {
-  console.log(`🎬 Generating segment ${segmentIndex + 1}/${totalSegments} with ${segmentImages.length} images...`);
+  console.log(`🎬 Generating segment ${segmentIndex + 1}/${totalSegments} with ${segmentImages.length} images at ${resolution}...`);
 
   // Modify prompt for multi-segment videos to ensure continuity
   let segmentPrompt = prompt;
@@ -72,6 +73,7 @@ async function generateAndPollSegment(
     images: segmentImages,
     duration: 10, // Each segment is 10 seconds
     prompt: segmentPrompt,
+    resolution,
   });
 
   if (!grokResponse.request_id) {
@@ -102,7 +104,7 @@ async function generateAndPollSegment(
 }
 
 const worker = new Worker('video-generation', async (job) => {
-  const { videoId, imageUrls, userId, prompt, durationSeconds } = job.data;
+  const { videoId, imageUrls, userId, prompt, durationSeconds, resolution = '720p' } = job.data;
 
   // Split images into segments (pairs of 2)
   const segments = splitIntoSegments(imageUrls);
@@ -111,6 +113,7 @@ const worker = new Worker('video-generation', async (job) => {
   console.log(`🎬 Starting video generation for ${videoId}`);
   console.log(`📊 ${imageUrls.length} images → ${segments.length} segment(s) → ${segments.length * 10}s total`);
   console.log(`📝 Prompt: ${prompt}`);
+  console.log(`📺 Resolution: ${resolution}`);
 
   const tempFiles: string[] = [];
   const tempDir = getTempDir();
@@ -122,7 +125,7 @@ const worker = new Worker('video-generation', async (job) => {
 
       // Generate all segments
       for (let i = 0; i < segments.length; i++) {
-        const segmentUrl = await generateAndPollSegment(segments[i], prompt, i, segments.length);
+        const segmentUrl = await generateAndPollSegment(segments[i], prompt, i, segments.length, resolution);
         segmentVideoUrls.push(segmentUrl);
         
         // Update progress
@@ -176,6 +179,7 @@ const worker = new Worker('video-generation', async (job) => {
         images: imageUrls,
         duration: 10,
         prompt: prompt,
+        resolution,
       });
 
       if (!grokResponse.request_id) {

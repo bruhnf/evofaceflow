@@ -5,6 +5,7 @@ export interface IVideo extends Document {
   userId: string;
   imageUrls: string[];           // ordered S3 urls from slots
   prompt: string;                // User-provided prompt for video generation
+  resolution: '480p' | '720p';   // Video resolution
   status: 'processing' | 'completed' | 'failed';
   finalVideoUrl?: string;
   thumbnailUrl?: string;
@@ -21,6 +22,7 @@ const VideoSchema = new Schema<IVideo>({
   userId: { type: String, required: true, index: true },
   imageUrls: [{ type: String, required: true }],
   prompt: { type: String, required: true },
+  resolution: { type: String, enum: ['480p', '720p'], default: '720p' },
   status: { type: String, enum: ['processing', 'completed', 'failed'], default: 'processing', index: true },
   finalVideoUrl: String,
   thumbnailUrl: String,

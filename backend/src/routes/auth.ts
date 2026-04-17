@@ -5,6 +5,10 @@ import { addUserLocation } from '../models/UserLocation';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import geoip from 'geoip-lite';
+import multer from 'multer';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { s3Client } from '../config/s3';
+import { v4 as uuidv4 } from 'uuid';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
@@ -189,6 +193,65 @@ router.put('/profile', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Multer config for profile photos
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
+// Upload profile photo to S3
+router.post('/profile-photo', authenticateToken, upload.single('photo'), async (req, res) => {
+  try {
+    const { userId } = (req as any).user;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: 'No photo uploaded' });
+    }
+
+    const bucket = process.env.S3_BUCKET!;
+    const region = process.env.AWS_REGION || 'us-east-1';
+    const photoKey = `avatars/${userId}/${uuidv4()}.jpg`;
+
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: photoKey,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    });
+
+    await s3Client.send(command);
+
+    const avatarUrl = `https://${bucket}.s3.${region}.amazonaws.com/${photoKey}`;
+
+    // Update user profile with new avatar URL
+    const user = await User.findOneAndUpdate(
+      { userId },
+      { avatarUrl },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      message: 'Profile photo uploaded successfully',
+      avatarUrl,
+    });
+  } catch (error) {
+    console.error('Profile photo upload error:', error);
+    res.status(500).json({ message: 'Failed to upload profile photo' });
   }
 });
 

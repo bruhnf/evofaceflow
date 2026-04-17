@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -10,6 +10,7 @@ import { API_BASE_URL } from '../config/api';
 
 const ProfilePhotoUploadScreen = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const { setUser } = useUserStore();
   const navigation = useNavigation();
 
@@ -24,26 +25,39 @@ const ProfilePhotoUploadScreen = () => {
     if (!result.canceled && result.assets) {
       const uri = result.assets[0].uri;
       setSelectedImage(uri);
+      setIsUploading(true);
 
-      // TODO: In production, upload to S3 first and use the S3 URL
-      // For now, save the local URI (works for this session)
       try {
         const token = await AsyncStorage.getItem('token');
-        await fetch(`${API_BASE_URL}/api/auth/profile`, {
-          method: 'PUT',
+        
+        // Upload photo to S3 via backend
+        const formData = new FormData();
+        formData.append('photo', { uri, name: 'profile.jpg', type: 'image/jpeg' } as any);
+
+        const response = await fetch(`${API_BASE_URL}/api/auth/profile-photo`, {
+          method: 'POST',
+          body: formData,
           headers: {
-            'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({ avatarUrl: uri }),
         });
-      } catch (error) {
-        console.error('Failed to save avatar URL:', error);
-      }
 
-      setUser({ avatarUrl: uri });
-      Alert.alert('Profile Photo Updated', 'Your profile photo has been updated.');
-      navigation.goBack();
+        const data = await response.json();
+
+        if (response.ok && data.avatarUrl) {
+          setUser({ avatarUrl: data.avatarUrl });
+          Alert.alert('Profile Photo Updated', 'Your profile photo has been updated.');
+          navigation.goBack();
+        } else {
+          Alert.alert('Upload Failed', data.message || 'Failed to upload profile photo');
+        }
+      } catch (error) {
+        console.error('Failed to upload avatar:', error);
+        Alert.alert('Error', 'Failed to upload profile photo. Please try again.');
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -63,8 +77,16 @@ const ProfilePhotoUploadScreen = () => {
           <Image source={{ uri: selectedImage }} style={styles.preview} />
         )}
 
-        <TouchableOpacity style={styles.button} onPress={pickAndUploadProfilePhoto}>
-          <Text style={styles.buttonText}>Choose New Photo</Text>
+        <TouchableOpacity 
+          style={[styles.button, isUploading && styles.buttonDisabled]} 
+          onPress={pickAndUploadProfilePhoto}
+          disabled={isUploading}
+        >
+          {isUploading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.buttonText}>Choose New Photo</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -88,6 +110,7 @@ const styles = StyleSheet.create({
   content: { padding: 20, alignItems: 'center', flex: 1, justifyContent: 'center' },
   preview: { width: 180, height: 180, borderRadius: 90, marginBottom: 40 },
   button: { backgroundColor: '#000', padding: 16, borderRadius: 30, width: '80%', alignItems: 'center' },
+  buttonDisabled: { opacity: 0.6 },
   buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
 });
 
