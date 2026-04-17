@@ -81,12 +81,12 @@ export async function generateVideo(request: GrokVideoRequest): Promise<GrokVide
   const apiKey = getGrokApiKey();
 
   try {
-    // Convert all images to data URLs for reference_image_urls
+    // Convert all images to data URLs and wrap in required object format
     console.log(`Converting ${request.images.length} images to data URLs for xAI API...`);
-    const referenceImageUrls: string[] = [];
+    const referenceImages: { url: string }[] = [];
     for (const imageUrl of request.images) {
       const dataUrl = await getImageAsDataUrl(imageUrl);
-      referenceImageUrls.push(dataUrl);
+      referenceImages.push({ url: dataUrl });
     }
 
     // Transform user's @Image1, @Image2 format to xAI's <IMAGE_1>, <IMAGE_2> format
@@ -99,7 +99,7 @@ export async function generateVideo(request: GrokVideoRequest): Promise<GrokVide
     const requestBody = {
       model: 'grok-imagine-video',
       prompt: prompt,
-      reference_image_urls: referenceImageUrls,
+      reference_images: referenceImages,
       duration: duration,
       aspect_ratio: '9:16',
       resolution: '720p',
@@ -111,9 +111,9 @@ export async function generateVideo(request: GrokVideoRequest): Promise<GrokVide
     console.log('Method: POST');
     console.log('Model:', requestBody.model);
     console.log('Prompt:', prompt);
-    console.log('Reference Images:', referenceImageUrls.length);
-    referenceImageUrls.forEach((url, i) => {
-      console.log(`  Image ${i + 1}: ${url.substring(0, 50)}... (${url.length} chars)`);
+    console.log('Reference Images:', referenceImages.length);
+    referenceImages.forEach((img, i) => {
+      console.log(`  Image ${i + 1}: ${img.url.substring(0, 50)}... (${img.url.length} chars)`);
     });
     console.log('Duration:', duration);
     console.log('Aspect Ratio:', requestBody.aspect_ratio);
