@@ -215,14 +215,13 @@ export async function downloadAndUploadVideo(
   const videoResponse = await axios.get(videoUrl, { responseType: 'arraybuffer' });
   const videoBuffer = Buffer.from(videoResponse.data);
 
-  // Upload video to S3 with public read access
+  // Upload video to S3 (bucket policy handles public access)
   const videoKey = `videos/${userId}/${videoId}.mp4`;
   await s3Client.send(new PutObjectCommand({
     Bucket: bucket,
     Key: videoKey,
     Body: videoBuffer,
     ContentType: 'video/mp4',
-    ACL: 'public-read',
   }));
 
   console.log(`Video uploaded to S3: ${videoKey}`);
@@ -318,7 +317,6 @@ export async function uploadVideoToS3(
     Key: videoKey,
     Body: videoBuffer,
     ContentType: 'video/mp4',
-    ACL: 'public-read',
   }));
 
   console.log(`Video uploaded to S3: ${videoKey}`);
