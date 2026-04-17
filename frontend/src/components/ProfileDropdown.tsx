@@ -6,7 +6,6 @@ import {
   StyleSheet, 
   Modal,
   Alert,
-  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -18,7 +17,7 @@ interface ProfileDropdownProps {
 
 const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ showShareButton = false }) => {
   const navigation = useNavigation();
-  const { logout, avatarUrl } = useUserStore();
+  const { logout } = useUserStore();
   const [menuVisible, setMenuVisible] = useState(false);
 
   const handleLogout = async () => {
@@ -49,16 +48,10 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ showShareButton = fal
       )}
       
       <TouchableOpacity 
-        style={styles.profileButton} 
+        style={styles.menuButton} 
         onPress={() => setMenuVisible(true)}
       >
-        {avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} style={styles.profileImage} />
-        ) : (
-          <View style={styles.profilePlaceholder}>
-            <Ionicons name="person" size={20} color="#666" />
-          </View>
-        )}
+        <Ionicons name="ellipsis-vertical" size={24} color="#000" />
       </TouchableOpacity>
 
       <Modal
@@ -131,26 +124,8 @@ const styles = StyleSheet.create({
   iconButton: {
     padding: 5,
   },
-  profileButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  profileImage: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-  },
-  profilePlaceholder: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
+  menuButton: {
+    padding: 5,
   },
   menuOverlay: { 
     flex: 1, 
