@@ -59,6 +59,7 @@ const generalLimiter = rateLimit({
   message: { message: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.path.startsWith('/api/upload'), // Skip for uploads (handled by nginx)
 });
 
 const authLimiter = rateLimit({
