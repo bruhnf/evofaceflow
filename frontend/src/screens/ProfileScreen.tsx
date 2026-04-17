@@ -85,6 +85,19 @@ const ProfileScreen = () => {
     if (userId) fetchVideos();
   }, [userId]);
 
+  // Auto-poll for processing videos every 10 seconds
+  useEffect(() => {
+    const hasProcessingVideos = videos.some(v => v.status === 'processing');
+    
+    if (hasProcessingVideos) {
+      const pollInterval = setInterval(() => {
+        fetchVideos();
+      }, 10000); // 10 seconds
+      
+      return () => clearInterval(pollInterval);
+    }
+  }, [videos]);
+
   const displayName = username || 'New User Name';
   const displayHandle = username ? `@${username}` : '@user03978539';
   const displayBio = bio || 'Add your bio here. Tell people about yourself and what you love!';
