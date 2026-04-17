@@ -25,6 +25,9 @@ if (!process.env.JWT_SECRET) {
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
 
+// Trust proxy headers (needed behind nginx for correct client IP in rate limiting)
+app.set('trust proxy', 1);
+
 // Serve admin dashboard BEFORE helmet (needs inline scripts)
 app.get('/admin', (req, res) => {
   // Disable CSP for admin page to allow inline scripts and event handlers
