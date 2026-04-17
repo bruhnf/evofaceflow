@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, ActivityIndicator, TextInput } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -17,6 +17,8 @@ const UploadScreen = () => {
   const [imageSlots, setImageSlots] = useState<(string | null)[]>(Array(maxImages).fill(null));
   const [prompt, setPrompt] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   // Resize image to max 720px on longest side while keeping aspect ratio
   const resizeImage = async (uri: string): Promise<string> => {
@@ -72,6 +74,48 @@ const UploadScreen = () => {
       updatedSlots[slotIndex] = newUri;
       setImageSlots(updatedSlots);
     }
+  };
+
+  // Get available image references based on filled slots
+  const getAvailableImageRefs = () => {
+    const refs: string[] = [];
+    imageSlots.forEach((slot, index) => {
+      if (slot !== null) {
+        refs.push(`@Image${index + 1}`);
+      }
+    });
+    return refs;
+  };
+
+  // Handle prompt text change and detect @ symbol
+  const handlePromptChange = (text: string) => {
+    setPrompt(text);
+    
+    // Check if the last character typed is @ or if we're in the middle of typing @Image
+    const lastAtIndex = text.lastIndexOf('@');
+    if (lastAtIndex !== -1) {
+      const textAfterAt = text.substring(lastAtIndex);
+      // Show picker if @ is at the end or user is typing @Image...
+      if (textAfterAt === '@' || /^@Image\d*$/i.test(textAfterAt)) {
+        setShowImagePicker(true);
+        return;
+      }
+    }
+    setShowImagePicker(false);
+  };
+
+  // Insert selected image reference into prompt
+  const insertImageRef = (ref: string) => {
+    // Find the last @ and replace from there
+    const lastAtIndex = prompt.lastIndexOf('@');
+    if (lastAtIndex !== -1) {
+      const newPrompt = prompt.substring(0, lastAtIndex) + ref + ' ';
+      setPrompt(newPrompt);
+    } else {
+      setPrompt(prompt + ref + ' ');
+    }
+    setShowImagePicker(false);
+    inputRef.current?.focus();
   };
 
 const uploadToS3 = async () => {
@@ -172,17 +216,40 @@ const uploadToS3 = async () => {
 
         <View style={styles.promptContainer}>
           <Text style={styles.promptLabel}>Describe your video</Text>
-          <TextInput
-            style={styles.promptInput}
-            placeholder="E.g., Create a smooth cinematic video showing my life journey with gentle transitions..."
-            placeholderTextColor="#999"
-            value={prompt}
-            onChangeText={setPrompt}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-            editable={!isUploading}
-          />
+          <Text style={styles.promptHint}>
+            💡 Reference your photos using @ (e.g., "The person in @Image1 walks toward @Image2")
+          </Text>
+          
+          <View style={styles.promptInputWrapper}>
+            <TextInput
+              ref={inputRef}
+              style={styles.promptInput}
+              placeholder="E.g., The person from @Image1 transforms into the person in @Image2 with smooth transitions..."
+              placeholderTextColor="#999"
+              value={prompt}
+              onChangeText={handlePromptChange}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              editable={!isUploading}
+            />
+            
+            {/* Image Reference Popup */}
+            {showImagePicker && getAvailableImageRefs().length > 0 && (
+              <View style={styles.imageRefPopup}>
+                <Text style={styles.popupTitle}>Insert image reference:</Text>
+                {getAvailableImageRefs().map((ref) => (
+                  <TouchableOpacity
+                    key={ref}
+                    style={styles.imageRefOption}
+                    onPress={() => insertImageRef(ref)}
+                  >
+                    <Text style={styles.imageRefText}>{ref}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
         </View>
 
         {imageSlots.filter(slot => slot !== null).length >= 2 && (
@@ -239,7 +306,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    marginBottom: 6,
+  },
+  promptHint: {
+    fontSize: 13,
+    color: '#666',
     marginBottom: 10,
+    fontStyle: 'italic',
+  },
+  promptInputWrapper: {
+    position: 'relative',
   },
   promptInput: {
     borderWidth: 1,
@@ -249,6 +325,41 @@ const styles = StyleSheet.create({
     fontSize: 15,
     minHeight: 100,
     backgroundColor: '#fafafa',
+    color: '#333',
+  },
+  imageRefPopup: {
+    position: 'absolute',
+    bottom: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 8,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 100,
+  },
+  popupTitle: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 8,
+  },
+  imageRefOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  imageRefText: {
+    fontSize: 15,
+    fontWeight: '600',
     color: '#333',
   },
   createButton: {

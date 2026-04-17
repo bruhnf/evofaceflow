@@ -89,8 +89,9 @@ export async function generateVideo(request: GrokVideoRequest): Promise<GrokVide
       referenceImageUrls.push(dataUrl);
     }
 
-    // API requires prompt for reference images
-    const prompt = request.prompt;
+    // Transform user's @Image1, @Image2 format to xAI's <IMAGE_1>, <IMAGE_2> format
+    let prompt = request.prompt;
+    prompt = prompt.replace(/@Image(\d+)/gi, '<IMAGE_$1>');
 
     // Max duration for reference images is 10 seconds per API docs
     const duration = Math.min(request.duration || 10, 10);
