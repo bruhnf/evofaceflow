@@ -191,7 +191,18 @@ router.put('/profile', authenticateToken, async (req, res) => {
     res.json({
       message: 'Profile updated successfully',
       user: {
-        userId: : any) {
+        userId: user.userId,
+        username: user.username,
+        subscriptionLevel: user.subscriptionLevel,
+        verified: user.verified,
+        bio: user.bio || '',
+        avatarUrl: user.avatarUrl || '',
+        followingCount: user.followingCount,
+        followersCount: user.followersCount,
+        likesCount: user.likesCount,
+      }
+    });
+  } catch (error: any) {
     console.error('Profile update error:', error);
     console.error('Error stack:', error.stack);
     console.error('Error name:', error.name);
@@ -207,18 +218,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
     res.status(500).json({ 
       message: 'Server error',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined 
-   
-        verified: user.verified,
-        bio: user.bio || '',
-        avatarUrl: user.avatarUrl || '',
-        followingCount: user.followingCount,
-        followersCount: user.followersCount,
-        likesCount: user.likesCount,
-      }
     });
-  } catch (error) {
-    console.error('Profile update error:', error);
-    res.status(500).json({ message: 'Server error' });
   }
 });
 
