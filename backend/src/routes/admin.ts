@@ -241,6 +241,25 @@ router.put('/users/:userId/subscription', authenticateAdmin, async (req: Request
   }
 });
 
+// Migration endpoint: Update all 'beginner' subscriptions to 'basic'
+router.post('/migrate/fix-subscription-levels', authenticateAdmin, async (req: Request, res: Response) => {
+  try {
+    const result = await User.updateMany(
+      { subscriptionLevel: 'beginner' as any },
+      { $set: { subscriptionLevel: 'basic' } }
+    );
+
+    res.json({
+      message: 'Migration completed',
+      modifiedCount: result.modifiedCount,
+      matchedCount: result.matchedCount,
+    });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({ message: 'Migration failed' });
+  }
+});
+
 // Get recent images (for admin review)
 router.get('/images', authenticateAdmin, async (req: Request, res: Response) => {
   try {

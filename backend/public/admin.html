@@ -424,10 +424,12 @@
         <div class="section">
           <h2>⚙️ App Settings</h2>
           
-          <div style="margin-top: 20px;">
-            <p style="color: #888;">No configurable settings at this time.</p>
-            <p style="color: #666; margin-top: 10px;">Future settings will appear here.</p>
-          </div>
+          <h3 style="color: #00d4ff; margin-top: 20px; margin-bottom: 10px; font-size: 1rem;">Data Migration</h3>
+          <p style="color: #888; margin-bottom: 15px;">Fix any legacy subscription levels in the database.</p>
+          <button class="btn btn-primary" onclick="migrateSubscriptionLevels()">
+            Fix Subscription Levels (beginner → basic)
+          </button>
+          <div id="migrationMsg" style="margin-top: 10px;"></div>
         </div>
       </div>
     </div>
@@ -806,6 +808,36 @@
     // Settings functions
     async function loadSettings() {
       // No settings to load currently
+    }
+
+    async function migrateSubscriptionLevels() {
+      const msgEl = document.getElementById('migrationMsg');
+      msgEl.textContent = 'Running migration...';
+      msgEl.className = '';
+      
+      try {
+        const res = await fetch(`${API_BASE}/migrate/fix-subscription-levels`, {
+          method: 'POST',
+          headers: { 'X-Admin-Key': apiKey }
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+          msgEl.className = 'success';
+          msgEl.textContent = `✓ Migration complete! Updated ${data.modifiedCount} user(s) from 'beginner' to 'basic'.`;
+          // Reload stats to reflect changes
+          if (document.getElementById('stats-tab').style.display !== 'none') {
+            loadStats();
+          }
+        } else {
+          msgEl.className = 'error';
+          msgEl.textContent = data.message || 'Migration failed';
+        }
+      } catch (e) {
+        msgEl.className = 'error';
+        msgEl.textContent = 'Migration failed: ' + e.message;
+      }
     }
   </script>
 </body>
