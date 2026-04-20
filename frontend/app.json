@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "Evoface",
+    "slug": "evoface",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bruhnf.evoface",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,6 +29,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "owner": "bruhnf",
+    "extra": {
+      "eas": {
+        "projectId": "f4da4ecc-3530-4e2c-bc4c-54569c4afb0e"
+      }
     }
   }
 }

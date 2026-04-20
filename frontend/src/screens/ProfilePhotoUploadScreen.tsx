@@ -11,10 +11,10 @@ import { API_BASE_URL } from '../config/api';
 const ProfilePhotoUploadScreen = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const { setUser } = useUserStore();
+  const { setUser, refreshProfile } = useUserStore();
   const navigation = useNavigation();
 
-  const pickAndUploadProfilePhoto = async () => {
+  const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -23,41 +23,54 @@ const ProfilePhotoUploadScreen = () => {
     });
 
     if (!result.canceled && result.assets) {
-      const uri = result.assets[0].uri;
-      setSelectedImage(uri);
-      setIsUploading(true);
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
 
-      try {
-        const token = await AsyncStorage.getItem('token');
+  const uploadPhoto = async () => {
+    if (!selectedImage) return;
+
+    setIsUploading(true);
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      
+      // Upload photo to S3 via backend
+      const formData = new FormData();
+      formData.append('photo', { uri: selectedImage, name: 'profile.jpg', type: 'image/jpeg' } as any);
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/profile-photo`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.avatarUrl) {
+        console.log('✅ Profile photo uploaded successfully!');
+        console.log('📸 Avatar URL:', data.avatarUrl);
         
-        // Upload photo to S3 via backend
-        const formData = new FormData();
-        formData.append('photo', { uri, name: 'profile.jpg', type: 'image/jpeg' } as any);
-
-        const response = await fetch(`${API_BASE_URL}/api/auth/profile-photo`, {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.avatarUrl) {
-          setUser({ avatarUrl: data.avatarUrl });
-          Alert.alert('Profile Photo Updated', 'Your profile photo has been updated.');
-          navigation.goBack();
-        } else {
-          Alert.alert('Upload Failed', data.message || 'Failed to upload profile photo');
-        }
-      } catch (error) {
-        console.error('Failed to upload avatar:', error);
-        Alert.alert('Error', 'Failed to upload profile photo. Please try again.');
-      } finally {
-        setIsUploading(false);
+        // Update local state
+        setUser({ avatarUrl: data.avatarUrl });
+        
+        // Refresh profile from server to ensure sync
+        await refreshProfile();
+        
+        Alert.alert('Success', 'Your profile photo has been updated.', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+      } else {
+        Alert.alert('Upload Failed', data.message || 'Failed to upload profile photo');
       }
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+      Alert.alert('Error', 'Failed to upload profile photo. Please try again.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -73,21 +86,64 @@ const ProfilePhotoUploadScreen = () => {
       </View>
 
       <View style={styles.content}>
-        {selectedImage && (
-          <Image source={{ uri: selectedImage }} style={styles.preview} />
-        )}
+        {selectedImage ? (
+          <>
+            <Image source={{ uri: selectedImage }} style={styles.preview} />
+            
+            <Text style={styles.instructionText}>
+              Review your photo before saving
+            </Text>
 
-        <TouchableOpacity 
-          style={[styles.button, isUploading && styles.buttonDisabled]} 
-          onPress={pickAndUploadProfilePhoto}
-          disabled={isUploading}
-        >
-          {isUploading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.buttonText}>Choose New Photo</Text>
-          )}
-        </TouchableOpacity>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity 
+                style={[styles.secondaryButton, isUploading && styles.buttonDisabled]} 
+                onPress={() => navigation.goBack()}
+                disabled={isUploading}
+              >
+                <Ionicons name="arrow-back" size={20} color="#000" />
+                <Text style={styles.secondaryButtonText}>Back</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.primaryButton, isUploading && styles.buttonDisabled]} 
+                onPress={uploadPhoto}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={20} color="#fff" />
+                    <Text style={styles.primaryButtonText}>Save</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.chooseAnotherButton} 
+              onPress={pickPhoto}
+              disabled={isUploading}
+            >
+              <Text style={styles.chooseAnotherText}>Choose Another Photo</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <View style={styles.placeholderContainer}>
+              <Ionicons name="camera" size={80} color="#ccc" />
+              <Text style={styles.placeholderText}>No photo selected</Text>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.primaryButton} 
+              onPress={pickPhoto}
+            >
+              <Ionicons name="images" size={20} color="#fff" />
+              <Text style={styles.primaryButtonText}>Choose Photo</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -108,10 +164,38 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '600' },
   headerSpacer: { width: 34 },
   content: { padding: 20, alignItems: 'center', flex: 1, justifyContent: 'center' },
-  preview: { width: 180, height: 180, borderRadius: 90, marginBottom: 40 },
-  button: { backgroundColor: '#000', padding: 16, borderRadius: 30, width: '80%', alignItems: 'center' },
+  preview: { width: 200, height: 200, borderRadius: 100, marginBottom: 20, borderWidth: 3, borderColor: '#000' },
+  instructionText: { fontSize: 16, color: '#666', marginBottom: 30, textAlign: 'center' },
+  buttonContainer: { flexDirection: 'row', gap: 15, marginBottom: 20, width: '100%', justifyContent: 'center' },
+  primaryButton: { 
+    backgroundColor: '#000', 
+    paddingVertical: 16, 
+    paddingHorizontal: 30, 
+    borderRadius: 30, 
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    minWidth: 140,
+    justifyContent: 'center',
+  },
+  primaryButtonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  secondaryButton: { 
+    backgroundColor: '#f0f0f0', 
+    paddingVertical: 16, 
+    paddingHorizontal: 30, 
+    borderRadius: 30, 
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    minWidth: 140,
+    justifyContent: 'center',
+  },
+  secondaryButtonText: { color: '#000', fontSize: 18, fontWeight: 'bold' },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  chooseAnotherButton: { marginTop: 10 },
+  chooseAnotherText: { color: '#007AFF', fontSize: 16 },
+  placeholderContainer: { alignItems: 'center', marginBottom: 40 },
+  placeholderText: { fontSize: 18, color: '#999', marginTop: 15 },
 });
 
 export default ProfilePhotoUploadScreen;

@@ -124,6 +124,7 @@ const ProfileScreen = () => {
         <View style={styles.avatarContainer}>
           <View style={styles.avatarWrapper}>
             <Image 
+              key={avatarUrl || 'placeholder'}
               source={{ uri: avatarUrl || 'https://via.placeholder.com/150/000000/FFFFFF?text=You' }} 
               style={styles.avatar} 
             />
