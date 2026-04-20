@@ -128,6 +128,7 @@ router.get('/users', authenticateAdmin, async (req: Request, res: Response) => {
       followersCount: user.followersCount,
       followingCount: user.followingCount,
       imageCount: imageCountMap.get(user.userId) || 0,
+      avatarUrl: user.avatarUrl || '',
       createdAt: user.createdAt,
     }));
 

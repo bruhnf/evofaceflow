@@ -347,6 +347,7 @@
                 <th>Subscription</th>
                 <th>Images</th>
                 <th>Followers</th>
+                <th>Profile Photo</th>
                 <th>Created</th>
                 <th>Actions</th>
               </tr>
@@ -557,6 +558,7 @@
             </td>
             <td>${u.imageCount}</td>
             <td>${u.followersCount}</td>
+            <td>${u.avatarUrl ? `<a href="${u.avatarUrl}" target="_blank" style="color: #00d4ff;">view photo</a>` : '<span style="color: #888;">no profile photo</span>'}</td>
             <td>${new Date(u.createdAt).toLocaleDateString()}</td>
             <td>
               <button class="btn btn-danger" onclick="deleteUser('${u.userId}')">Delete</button>
