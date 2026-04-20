@@ -160,29 +160,54 @@ router.put('/profile', authenticateToken, async (req, res) => {
     const { userId } = (req as any).user;
     const { username, bio, avatarUrl } = req.body;
 
-    const user = await User.findOne({ userId });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    console.log('Profile update request:', { userId, username, bio: bio?.length, avatarUrl: !!avatarUrl });
 
-    // Check if username is being changed and if it's already taken
-    if (username && username !== user.username) {
-      const existingUser = await User.findOne({ username });
-      if (existingUser) {
-        return res.status(400).json({ message: 'Username already taken' });
-      }
-      user.username = username;
+    const user = await User.findOne({ userId });
+    if (!user) {
+      console.error('User not found:', userId);
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    if (bio !== undefined) user.bio = bio;
+    // Check if username is being changed and if it's already taken
+    if (username && username.trim() && username.trim() !== user.username) {
+      const existingUser = await User.findOne({ username: username.trim() });
+      if (existingUser) {
+        console.log('Username already taken:', username);
+        return res.status(400).json({ message: 'Username already taken' });
+      }
+      user.username = username.trim();
+    }
+
+    if (bio !== undefined) {
+      user.bio = bio.trim();
+      console.log('Updating bio, length:', bio.trim().length);
+    }
     if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
 
+    console.log('Saving user...');
     await user.save();
+    console.log('User saved successfully');
 
     res.json({
       message: 'Profile updated successfully',
       user: {
-        userId: user.userId,
-        username: user.username,
-        subscriptionLevel: user.subscriptionLevel,
+        userId: : any) {
+    console.error('Profile update error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    
+    // Provide more specific error message for Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: 'Validation error: ' + Object.values(error.errors).map((e: any) => e.message).join(', ')
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+   
         verified: user.verified,
         bio: user.bio || '',
         avatarUrl: user.avatarUrl || '',
@@ -192,6 +217,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Profile update error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

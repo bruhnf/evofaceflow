@@ -46,11 +46,14 @@ const EditProfileScreen = () => {
         Alert.alert('Profile Updated', 'Your changes have been saved.');
         navigation.goBack();
       } else {
-        Alert.alert('Error', result.message || 'Failed to update profile');
+        console.error('Profile update failed:', result);
+        const errorMsg = result.message || 'Failed to update profile';
+        const details = result.details ? `\n\nDetails: ${result.details}` : '';
+        Alert.alert('Error', errorMsg + details);
       }
     } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Could not reach the server.');
+      console.error('Profile update error:', error);
+      Alert.alert('Error', 'Could not reach the server. Please check your connection.');
     } finally {
       setLoading(false);
     }
